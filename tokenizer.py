@@ -82,3 +82,6 @@ class Tokenizer:
                 continue
             tokens.append(self._convert_id_to_token(index))
         return tokens
+
+    def get_vocab_len(self):
+        return len(self.ids_to_tokens)
