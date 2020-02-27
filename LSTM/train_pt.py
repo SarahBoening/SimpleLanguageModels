@@ -9,7 +9,7 @@ from argparse import Namespace
 
 
 flags = Namespace(
-    train_file='./data/trump.txt',
+    train_file='./LSTM/data/trump.txt',
     output_name='lstm_trump',
     epochs=200,
     seq_size=32,
@@ -20,7 +20,7 @@ flags = Namespace(
     initial_words=['I', 'am'],
     do_predict=True,
     predict_top_k=5,
-    checkpoint_path='./output/',
+    checkpoint_path='./LSTM/output/',
 )
 
 
@@ -70,8 +70,7 @@ class RNNModule(nn.Module):
         embed = self.embedding(x)
         output, state = self.lstm(embed, prev_state)
         logits = self.dense(output)
-        probs = nn.Softmax(logits, dim=1)
-        return probs, state
+        return logits, state
 
     def zero_state(self, batch_size):
         return (torch.zeros(1, batch_size, self.lstm_size),
@@ -96,8 +95,11 @@ def predict(device, net, words, n_vocab, vocab_to_int, int_to_vocab, top_k=5):
         ix = torch.tensor([[vocab_to_int[w]]]).to(device)
         output, (state_h, state_c) = net(ix, (state_h, state_c))
 
-    choice = torch.argmax(output[0], k=top_k)
-
+    choice = torch.argmax(output[0]).item()
+    #_, top_ix = torch.topk(output[0], k=top_k)
+    #choices = top_ix.tolist()
+    #choice = choices[0][0]
+    print(int_to_vocab[choice])
     words.append(int_to_vocab[choice])
 
     for _ in range(100):
@@ -106,10 +108,10 @@ def predict(device, net, words, n_vocab, vocab_to_int, int_to_vocab, top_k=5):
 
         #_, top_ix = torch.topk(output[0], k=top_k)
         #choices = top_ix.tolist()
-        #choice = np.random.choice(choices[0])
+        #choice = choices[0][0]
         choice = torch.argmax(output[0]).item()
         words.append(int_to_vocab[choice])
-
+        print(int_to_vocab[choice])
     print(' '.join(words).encode('utf-8'))
 
 
