@@ -70,8 +70,8 @@ class RNNModule(nn.Module):
         embed = self.embedding(x)
         output, state = self.lstm(embed, prev_state)
         logits = self.dense(output)
-
-        return logits, state
+        probs = nn.Softmax(logits, dim=1)
+        return probs, state
 
     def zero_state(self, batch_size):
         return (torch.zeros(1, batch_size, self.lstm_size),
@@ -96,9 +96,7 @@ def predict(device, net, words, n_vocab, vocab_to_int, int_to_vocab, top_k=5):
         ix = torch.tensor([[vocab_to_int[w]]]).to(device)
         output, (state_h, state_c) = net(ix, (state_h, state_c))
 
-    _, top_ix = torch.topk(output[0], k=top_k)
-    choices = top_ix.tolist()
-    choice = np.random.choice(choices[0])
+    choice = torch.argmax(output[0], k=top_k)
 
     words.append(int_to_vocab[choice])
 
@@ -106,9 +104,10 @@ def predict(device, net, words, n_vocab, vocab_to_int, int_to_vocab, top_k=5):
         ix = torch.tensor([[choice]]).to(device)
         output, (state_h, state_c) = net(ix, (state_h, state_c))
 
-        _, top_ix = torch.topk(output[0], k=top_k)
-        choices = top_ix.tolist()
-        choice = np.random.choice(choices[0])
+        #_, top_ix = torch.topk(output[0], k=top_k)
+        #choices = top_ix.tolist()
+        #choice = np.random.choice(choices[0])
+        choice = torch.argmax(output[0]).item()
         words.append(int_to_vocab[choice])
 
     print(' '.join(words).encode('utf-8'))
@@ -167,13 +166,12 @@ def main():
                       'Loss: {}'.format(loss_value))
 
             if iteration % 1000 == 0:
-                if flags.do_predict:
-                    predict(device, net, flags.initial_words, n_vocab,
-                            vocab_to_int, int_to_vocab, top_k=5)
                 torch.save(net.state_dict(),
                            os.path.join(flags.checkpoint_path, 'checkpoint_pt/model-{}-{}.pth'.format(flags.output_name, iteration)))
     # save model after training
     torch.save(net, os.path.join(flags.checkpoint_path, 'model-{}-{}.pth'.format(flags.output_name, 'finished')))
-
+    if flags.do_predict:
+        predict(device, net, flags.initial_words, n_vocab, vocab_to_int, int_to_vocab, top_k=5)
+							
 if __name__ == '__main__':
     main()
