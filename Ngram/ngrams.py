@@ -93,9 +93,9 @@ def model_ngram(n, data):
 
 
 if __name__ == "__main__":
-    input_path = "./model_3_trump.pkl"
-    output_path = "./"
-    data_path = "E:\\Hiwi\\BERT_undCo\\SimpleLanguageModels\\LSTM\\data\\trump.txt"
+    input_path = "./Ngram/output/model_3_trump.pkl"
+    output_path = "./Ngram/output/"
+    data_path = "./LSTM/data/trump.txt"
     #data_path = ""
     corpus = "trump"
     gen = 20
