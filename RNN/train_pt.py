@@ -9,8 +9,8 @@ from argparse import Namespace
 
 
 flags = Namespace(
-    train_file='./LSTM/data/trump.txt',
-    output_name='lstm_trump',
+    train_file='./RNN/data/trump.txt',
+    output_name='gru_trump',
     epochs=200,
     seq_size=32,
     batch_size=16,
@@ -20,8 +20,8 @@ flags = Namespace(
     initial_words=['I', 'am'],
     do_predict=True,
     predict_top_k=5,
-    checkpoint_path='./LSTM/output/',
-	rnn_type='GRU' # 'GRU' oder 'LSTM'
+    checkpoint_path='./RNN/output/',
+    rnn_type='GRU' # 'GRU' oder 'LSTM'
 )
 
 
@@ -57,17 +57,15 @@ def get_batches(in_text, out_text, batch_size, seq_size):
 
 
 class RNNModule(nn.Module):
-    def __init__(self, rrn_type, n_vocab, seq_size, embedding_size, lstm_size):
+    def __init__(self, rnn_type, n_vocab, seq_size, embedding_size, lstm_size):
         super(RNNModule, self).__init__()
         self.seq_size = seq_size
         self.rnn_size = lstm_size
         self.embedding = nn.Embedding(n_vocab, embedding_size)
-		if rnn_type in ['LSTM', 'GRU']:
-            self.rnn = getattr(nn, rnn_type)(ninp, nhid, nlayers, dropout=dropout)
-        self.rnn_type = nn.LSTM(embedding_size,
-                            lstm_size,
-                            batch_first=True)
+        if rnn_type in ['LSTM', 'GRU']:
+            self.rnn = getattr(nn, rnn_type)(n_vocab, embedding_size,lstm_size)
         self.dense = nn.Linear(lstm_size, n_vocab)
+        self.rnn_type = rnn_type
 
     def forward(self, x, prev_state):
         embed = self.embedding(x)
@@ -76,11 +74,10 @@ class RNNModule(nn.Module):
         return logits, state
 
     def zero_state(self, batch_size):
-		if self.rnn_type == 'LSTM':
-			return (torch.zeros(1, batch_size, self.rnn_size),
-					torch.zeros(1, batch_size, self.rnn_size))
-		else:
-			return torch.zeros(1, batch_size, self.rnn_size)
+        if self.rnn_type == 'LSTM':
+            return (torch.zeros(1, batch_size, self.rnn_size),torch.zeros(1, batch_size, self.rnn_size))
+        else:
+            return torch.zeros(1, batch_size, self.rnn_size)
 
 
 def get_loss_and_train_op(net, lr=0.001):
@@ -131,9 +128,9 @@ def main():
     int_to_vocab, vocab_to_int, n_vocab, in_text, out_text = get_data_from_file(
         flags.train_file, flags.batch_size, flags.seq_size)
 
-    net = RNNModule(n_vocab, flags.rnn_type, flags.seq_size,
+    net = RNNModule(flags.rnn_type, n_vocab, flags.seq_size,
                     flags.embedding_size, flags.lstm_size)
-	print("RNN TYPE: ", flags.rnn_type)				
+    print("RNN TYPE: ", flags.rnn_type)				
     net = net.to(device)
 
     criterion, optimizer = get_loss_and_train_op(net, 0.01)

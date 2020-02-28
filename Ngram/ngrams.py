@@ -98,7 +98,7 @@ if __name__ == "__main__":
     data_path = "./LSTM/data/trump.txt"
     #data_path = ""
     corpus = "trump"
-    gen = 20
+    gen = 200
     model = True
     if data_path:
         data = preprocess_text(data_path)
