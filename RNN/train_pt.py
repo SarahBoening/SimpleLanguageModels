@@ -14,7 +14,7 @@ import model as m
 
 flags = Namespace(
     train_file='./data/trump.txt',
-    output_name='lstm2_trump',
+    output_name='gru_trump',
     checkpoint="",  # name of checkpoint to reload
     out_file="",  # name for file with generated text
     do_train=True,
@@ -33,7 +33,7 @@ flags = Namespace(
     load_checkpoint=False,
     predict_top_k=5,
     checkpoint_path='./output/',
-    rnn_type='LSTM',  # 'GRU' oder 'LSTM'
+    rnn_type='GRU',  # 'GRU' oder 'LSTM'
     lr=0.001
 )
 
@@ -80,36 +80,29 @@ def predict(device, model, n_vocab, vocab_to_int, int_to_vocab, top_k):
     model.eval()
     words = flags.initial_words
     hidden = model.init_hidden(1)
-    input = torch.randint(n_vocab, (1,1), dtype=torch.long).to(device)
     with torch.no_grad():
-        output, hidden = model(input, hidden)
-        #for w in words:
-            #ix = torch.tensor([[vocab_to_int[w]]]).to(device)
-            #output, hidden = model(ix, hidden)
-        #print(output[0])
-        word_weights = output.squeeze().div(1.0).exp().cpu()
-        word_idx = torch.multinomial(word_weights,1)[0]
-        input.fill_(word_idx)
-        print(word_idx)
-        word = int_to_vocab[word_idx]
-        words.append(word)        
+        for w in words:
+            ix = torch.tensor([[vocab_to_int[w]]]).to(device)
+            output, hidden = model(ix, hidden)
+
         choice = torch.argmax(output[0]).item()
         #_, top_ix = torch.topk(output[0], k=top_k)
         #choices = top_ix.tolist()
         #choice = choices[0][0]
         #print(int_to_vocab[choice])
-        #words.append(int_to_vocab[choice])
-        #for _ in range(flags.words):
-            #ix = torch.tensor([[choice]]).to(device)
-            #output, hidden = model(ix, hidden)
+        words.append(int_to_vocab[choice])
+        for _ in range(flags.words):
+            ix = torch.tensor([[choice]]).to(device)
+            output, hidden = model(ix, hidden)
 
             #_, top_ix = torch.topk(output[0], k=top_k)
             #choices = top_ix.tolist()
             #choice = choices[0][0]
-            #choice = torch.argmax(output[0]).item()
-            #words.append(int_to_vocab[choice])
-            #print(int_to_vocab[choice])
+            choice = torch.argmax(output[0]).item()
+            words.append(int_to_vocab[choice])
+            print(int_to_vocab[choice])
     print(' '.join(words).encode('utf-8'))
+
 
 def repackage_hidden(h):
     """Wraps hidden states in new Tensors, to detach them from their history."""
