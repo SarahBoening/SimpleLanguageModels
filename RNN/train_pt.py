@@ -11,6 +11,7 @@ from argparse import Namespace
 flags = Namespace(
     train_file='./data/trump.txt',
     output_name='lstm_trump',
+    gpu_ids=0,
     epochs=200,
     seq_size=32,
     batch_size=16,
@@ -121,6 +122,8 @@ def evaluate():
 
 
 def main():
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_ids
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     int_to_vocab, vocab_to_int, n_vocab, in_text, out_text = get_data_from_file(
         flags.train_file, flags.batch_size, flags.seq_size)
