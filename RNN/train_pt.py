@@ -8,12 +8,12 @@ import os
 from argparse import Namespace
 import time
 
-import model
+import model as m
 
 # https://github.com/pytorch/examples/blob/master/word_language_model/
 
 flags = Namespace(
-    train_file='./RNN/data/trump.txt',
+    train_file='./data/trump.txt',
     output_name='gru_trump',
     checkpoint="",  # name of checkpoint to reload
     out_file="",  # name for file with generated text
@@ -21,16 +21,18 @@ flags = Namespace(
     seed=666,
     epochs=200,
     seq_size=32,
-    batch_size=16,
+    batch_size=32,
     embedding_size=64,  # size of word embeddings
     lstm_size=64,
+    nhid=200,
+    nlayers=2,
     gradients_norm=5,
     initial_words=['I', 'am'],
     words=100,  # length of new generated words
     do_predict=True,
     load_checkpoint=False,
     predict_top_k=5,
-    checkpoint_path='./RNN/output/',
+    checkpoint_path='./output/',
     rnn_type='GRU',  # 'GRU' oder 'LSTM'
     lr=0.001
 )
@@ -74,28 +76,28 @@ def get_loss_and_train_op(net, lr=0.001):
     return criterion, optimizer
 
 
-def predict(device, model, n_vocab, vocab_to_int, int_to_vocab):
+def predict(device, model, n_vocab, vocab_to_int, int_to_vocab, top_k):
     model.eval()
     words = flags.initial_words
-    hidden = model.init_hidden(n_vocab)
+    hidden = model.init_hidden(1)
     with torch.no_grad():
         for w in words:
             ix = torch.tensor([[vocab_to_int[w]]]).to(device)
             output, hidden = model(ix, hidden)
 
         choice = torch.argmax(output[0]).item()
-        # _, top_ix = torch.topk(output[0], k=top_k)
-        # choices = top_ix.tolist()
-        # choice = choices[0][0]
-        print(int_to_vocab[choice])
+        #_, top_ix = torch.topk(output[0], k=top_k)
+        #choices = top_ix.tolist()
+        #choice = choices[0][0]
+        #print(int_to_vocab[choice])
         words.append(int_to_vocab[choice])
         for _ in range(flags.words):
             ix = torch.tensor([[choice]]).to(device)
             output, hidden = model(ix, hidden)
 
-            # _, top_ix = torch.topk(output[0], k=top_k)
-            # choices = top_ix.tolist()
-            # choice = choices[0][0]
+            #_, top_ix = torch.topk(output[0], k=top_k)
+            #choices = top_ix.tolist()
+            #choice = choices[0][0]
             choice = torch.argmax(output[0]).item()
             words.append(int_to_vocab[choice])
             print(int_to_vocab[choice])
@@ -130,11 +132,10 @@ def evaluate():
     return total_loss / (len(data_source) - 1)
 
 
-def train(batches, model, hidden, device, optimizer, criterion, n_vocab, total_loss):
-    iteration = 0
+def train(batches, model, device, optimizer, criterion, n_vocab, total_loss, iteration, e):
     loss = 0
     model.train()
-    hidden = model.init_hidden(args.batch_size)
+    hidden = model.init_hidden(flags.batch_size)
 
     for x, y in batches:
         iteration += 1
@@ -147,14 +148,14 @@ def train(batches, model, hidden, device, optimizer, criterion, n_vocab, total_l
 
         output, hidden = model(x, hidden)
 
-        loss = criterion(output.view(-1, ntokens), y)
+        loss = criterion(output.transpose(1,2), y)
         loss_value = loss.item()
         loss.backward()
         total_loss += loss.item()
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
         _ = torch.nn.utils.clip_grad_norm_(
-            net.parameters(), flags.gradients_norm)
+            model.parameters(), flags.gradients_norm)
         for p in model.parameters():
             p.data.add_(-flags.lr, p.grad.data)
 
@@ -166,37 +167,34 @@ def train(batches, model, hidden, device, optimizer, criterion, n_vocab, total_l
                   'Loss: {}'.format(loss_value))
 
         if iteration % 1000 == 0:
-            torch.save(net.state_dict(),
+            torch.save(model.state_dict(),
                        os.path.join(flags.checkpoint_path,
                                     'checkpoint_pt/model-{}-{}.pth'.format(flags.output_name, iteration)))
-    return model, total_loss
+    return model, total_loss, iteration
 
 
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    torch.manual_seed(seed)
+    torch.manual_seed(flags.seed)
     int_to_vocab, vocab_to_int, n_vocab, in_text, out_text = get_data_from_file(
         flags.train_file, flags.batch_size, flags.seq_size)
-
-    if flags.load_ceckpoint:
+    model = m.RNNModel(flags.rnn_type, n_vocab, flags.embedding_size, flags.nhid, flags.nlayers)
+    if flags.load_checkpoint:
         with open(args.checkpoint, 'rb') as f:
             model = torch.load(f).to(device)
             model.eval()
-    else:
-        model = model.RNNModule(flags.rnn_type, n_vocab, flags.seq_size,
-                                flags.embedding_size, flags.lstm_size)
-        print("RNN TYPE: ", flags.rnn_type)
+    print("RNN TYPE: ", flags.rnn_type)
     model = model.to(device)
 
     if flags.do_train:
-        criterion, optimizer = get_loss_and_train_op(net, 0.01)
+        criterion, optimizer = get_loss_and_train_op(model, 0.01)
 
         total_loss = 0
-
+        iteration = 0
         try:
             for e in range(flags.epochs):
                 batches = get_batches(in_text, out_text, flags.batch_size, flags.seq_size)
-                model, total_loss = train(batches, model, hidden, device, optimizer, criterion, n_vocab, total_loss)
+                model, total_loss, iteration = train(batches, model,device, optimizer, criterion, n_vocab, total_loss, iteration, e)
 
             # save model after training
             torch.save(model, os.path.join(flags.checkpoint_path, 'model-{}-{}.pth'.format(flags.output_name, 'finished')))
@@ -206,7 +204,7 @@ def main():
             print('Exiting from training early')
 
     if flags.do_predict:
-        predict(device, model, flags.initial_words, n_vocab, vocab_to_int, int_to_vocab, top_k=5)
+        predict(device, model,n_vocab, vocab_to_int, int_to_vocab, 5)
 
 
 if __name__ == '__main__':
