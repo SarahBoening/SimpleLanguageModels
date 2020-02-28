@@ -6,22 +6,33 @@ import numpy as np
 from collections import Counter
 import os
 from argparse import Namespace
+import time
 
+import model
+
+# https://github.com/pytorch/examples/blob/master/word_language_model/
 
 flags = Namespace(
     train_file='./RNN/data/trump.txt',
     output_name='gru_trump',
+    checkpoint="",  # name of checkpoint to reload
+    out_file="",  # name for file with generated text
+    do_train=True,
+    seed=666,
     epochs=200,
     seq_size=32,
     batch_size=16,
-    embedding_size=64,
+    embedding_size=64,  # size of word embeddings
     lstm_size=64,
     gradients_norm=5,
     initial_words=['I', 'am'],
+    words=100,  # length of new generated words
     do_predict=True,
+    load_checkpoint=False,
     predict_top_k=5,
     checkpoint_path='./RNN/output/',
-    rnn_type='GRU' # 'GRU' oder 'LSTM'
+    rnn_type='GRU',  # 'GRU' oder 'LSTM'
+    lr=0.001
 )
 
 
@@ -53,31 +64,7 @@ def get_data_from_file(train_file, batch_size, seq_size):
 def get_batches(in_text, out_text, batch_size, seq_size):
     num_batches = np.prod(in_text.shape) // (seq_size * batch_size)
     for i in range(0, num_batches * seq_size, seq_size):
-        yield in_text[:, i:i+seq_size], out_text[:, i:i+seq_size]
-
-
-class RNNModule(nn.Module):
-    def __init__(self, rnn_type, n_vocab, seq_size, embedding_size, lstm_size):
-        super(RNNModule, self).__init__()
-        self.seq_size = seq_size
-        self.rnn_size = lstm_size
-        self.embedding = nn.Embedding(n_vocab, embedding_size)
-        if rnn_type in ['LSTM', 'GRU']:
-            self.rnn = getattr(nn, rnn_type)(n_vocab, embedding_size,lstm_size)
-        self.dense = nn.Linear(lstm_size, n_vocab)
-        self.rnn_type = rnn_type
-
-    def forward(self, x, prev_state):
-        embed = self.embedding(x)
-        output, state = self.rnn(embed, prev_state)
-        logits = self.dense(output)
-        return logits, state
-
-    def zero_state(self, batch_size):
-        if self.rnn_type == 'LSTM':
-            return (torch.zeros(1, batch_size, self.rnn_size),torch.zeros(1, batch_size, self.rnn_size))
-        else:
-            return torch.zeros(1, batch_size, self.rnn_size)
+        yield in_text[:, i:i + seq_size], out_text[:, i:i + seq_size]
 
 
 def get_loss_and_train_op(net, lr=0.001):
@@ -87,97 +74,140 @@ def get_loss_and_train_op(net, lr=0.001):
     return criterion, optimizer
 
 
-def predict(device, net, words, n_vocab, vocab_to_int, int_to_vocab, top_k=5):
-    net.eval()
+def predict(device, model, n_vocab, vocab_to_int, int_to_vocab):
+    model.eval()
     words = flags.initial_words
+    hidden = model.init_hidden(n_vocab)
+    with torch.no_grad():
+        for w in words:
+            ix = torch.tensor([[vocab_to_int[w]]]).to(device)
+            output, hidden = model(ix, hidden)
 
-    state_h = net.zero_state(1)
-    state_h = state_h.to(device)
-    #state_c = state_c.to(device)
-    for w in words:
-        ix = torch.tensor([[vocab_to_int[w]]]).to(device)
-        output, state_h = net(ix, state_h)
-
-    choice = torch.argmax(output[0]).item()
-    #_, top_ix = torch.topk(output[0], k=top_k)
-    #choices = top_ix.tolist()
-    #choice = choices[0][0]
-    print(int_to_vocab[choice])
-    words.append(int_to_vocab[choice])
-
-    for _ in range(100):
-        ix = torch.tensor([[choice]]).to(device)
-        output, state_h = net(ix, state_h)
-
-        #_, top_ix = torch.topk(output[0], k=top_k)
-        #choices = top_ix.tolist()
-        #choice = choices[0][0]
         choice = torch.argmax(output[0]).item()
-        words.append(int_to_vocab[choice])
+        # _, top_ix = torch.topk(output[0], k=top_k)
+        # choices = top_ix.tolist()
+        # choice = choices[0][0]
         print(int_to_vocab[choice])
+        words.append(int_to_vocab[choice])
+        for _ in range(flags.words):
+            ix = torch.tensor([[choice]]).to(device)
+            output, hidden = model(ix, hidden)
+
+            # _, top_ix = torch.topk(output[0], k=top_k)
+            # choices = top_ix.tolist()
+            # choice = choices[0][0]
+            choice = torch.argmax(output[0]).item()
+            words.append(int_to_vocab[choice])
+            print(int_to_vocab[choice])
     print(' '.join(words).encode('utf-8'))
 
 
+def repackage_hidden(h):
+    """Wraps hidden states in new Tensors, to detach them from their history."""
+
+    if isinstance(h, torch.Tensor):
+        return h.detach()
+    else:
+        return tuple(repackage_hidden(v) for v in h)
+
+
 def evaluate():
-    # TODO write evaluation
-    pass
+    # Turn on evaluation mode which disables dropout.
+    model.eval()
+    total_loss = 0.
+    ntokens = len(corpus.dictionary)
+    hidden = model.init_hidden(eval_batch_size)
+    with torch.no_grad():
+        for i in range(0, data_source.size(0) - 1, args.bptt):
+            data, targets = get_batch(data_source, i)
+            if args.model == 'Transformer':
+                output = model(data)
+            else:
+                output, hidden = model(data, hidden)
+                hidden = repackage_hidden(hidden)
+            output_flat = output.view(-1, ntokens)
+            total_loss += len(data) * criterion(output_flat, targets).item()
+    return total_loss / (len(data_source) - 1)
+
+
+def train(batches, model, hidden, device, optimizer, criterion, n_vocab, total_loss):
+    iteration = 0
+    loss = 0
+    model.train()
+    hidden = model.init_hidden(args.batch_size)
+
+    for x, y in batches:
+        iteration += 1
+
+        model.zero_grad()
+        hidden = repackage_hidden(hidden)
+
+        x = torch.tensor(x).to(device)
+        y = torch.tensor(y).to(device)
+
+        output, hidden = model(x, hidden)
+
+        loss = criterion(output.view(-1, ntokens), y)
+        loss_value = loss.item()
+        loss.backward()
+        total_loss += loss.item()
+
+        # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
+        _ = torch.nn.utils.clip_grad_norm_(
+            net.parameters(), flags.gradients_norm)
+        for p in model.parameters():
+            p.data.add_(-flags.lr, p.grad.data)
+
+        #optimizer.step()
+
+        if iteration % 100 == 0:
+            print('Epoch: {}/{}'.format(e, flags.epochs),
+                  'Iteration: {}'.format(iteration),
+                  'Loss: {}'.format(loss_value))
+
+        if iteration % 1000 == 0:
+            torch.save(net.state_dict(),
+                       os.path.join(flags.checkpoint_path,
+                                    'checkpoint_pt/model-{}-{}.pth'.format(flags.output_name, iteration)))
+    return model, total_loss
 
 
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    torch.manual_seed(seed)
     int_to_vocab, vocab_to_int, n_vocab, in_text, out_text = get_data_from_file(
         flags.train_file, flags.batch_size, flags.seq_size)
 
-    net = RNNModule(flags.rnn_type, n_vocab, flags.seq_size,
-                    flags.embedding_size, flags.lstm_size)
-    print("RNN TYPE: ", flags.rnn_type)				
-    net = net.to(device)
+    if flags.load_ceckpoint:
+        with open(args.checkpoint, 'rb') as f:
+            model = torch.load(f).to(device)
+            model.eval()
+    else:
+        model = model.RNNModule(flags.rnn_type, n_vocab, flags.seq_size,
+                                flags.embedding_size, flags.lstm_size)
+        print("RNN TYPE: ", flags.rnn_type)
+    model = model.to(device)
 
-    criterion, optimizer = get_loss_and_train_op(net, 0.01)
+    if flags.do_train:
+        criterion, optimizer = get_loss_and_train_op(net, 0.01)
 
-    iteration = 0
+        total_loss = 0
 
-    for e in range(flags.epochs):
-        batches = get_batches(in_text, out_text, flags.batch_size, flags.seq_size)
-        state_h = net.zero_state(flags.batch_size)
-        state_h = state_h.to(device)
-        #state_c = state_c.to(device)
-        for x, y in batches:
-            iteration += 1
-            net.train()
+        try:
+            for e in range(flags.epochs):
+                batches = get_batches(in_text, out_text, flags.batch_size, flags.seq_size)
+                model, total_loss = train(batches, model, hidden, device, optimizer, criterion, n_vocab, total_loss)
 
-            optimizer.zero_grad()
+            # save model after training
+            torch.save(model, os.path.join(flags.checkpoint_path, 'model-{}-{}.pth'.format(flags.output_name, 'finished')))
 
-            x = torch.tensor(x).to(device)
-            y = torch.tensor(y).to(device)
+        except KeyboardInterrupt:
+            print('-' * 89)
+            print('Exiting from training early')
 
-            logits, state_h = net(x, state_h)
-            loss = criterion(logits.transpose(1, 2), y)
-
-            loss_value = loss.item()
-
-            loss.backward()
-
-            state_h = state_h.detach()
-            #state_c = state_c.detach()
-
-            _ = torch.nn.utils.clip_grad_norm_(
-                net.parameters(), flags.gradients_norm)
-
-            optimizer.step()
-
-            if iteration % 100 == 0:
-                print('Epoch: {}/{}'.format(e, flags.epochs),
-                      'Iteration: {}'.format(iteration),
-                      'Loss: {}'.format(loss_value))
-
-            if iteration % 1000 == 0:
-                torch.save(net.state_dict(),
-                           os.path.join(flags.checkpoint_path, 'checkpoint_pt/model-{}-{}.pth'.format(flags.output_name, iteration)))
-    # save model after training
-    torch.save(net, os.path.join(flags.checkpoint_path, 'model-{}-{}.pth'.format(flags.output_name, 'finished')))
     if flags.do_predict:
-        predict(device, net, flags.initial_words, n_vocab, vocab_to_int, int_to_vocab, top_k=5)
-							
+        predict(device, model, flags.initial_words, n_vocab, vocab_to_int, int_to_vocab, top_k=5)
+
+
 if __name__ == '__main__':
     main()
