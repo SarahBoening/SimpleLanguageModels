@@ -39,9 +39,10 @@ def preprocess_text(data_path):
 def save_ngram(model, output_path, n, corpus_name):
     ''' save model '''
     file = os.path.join(output_path, "model_{}_{}.pkl".format(n, corpus_name))
-    output = open(file, 'wb')
-    pickle.dump(model, output)
-    output.close()
+    with open(file, 'wb') as f:
+		for k,v in model.items():
+			f.write("{},{}\n".format(str(k),str(v)))
+    
 
 
 def load_ngram(input_path):
