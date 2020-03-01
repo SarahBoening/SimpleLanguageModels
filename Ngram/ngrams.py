@@ -38,11 +38,12 @@ def preprocess_text(data_path):
 
 def save_ngram(model, output_path, n, corpus_name):
     ''' save model '''
+    print('saving ...')
     file = os.path.join(output_path, "model_{}_{}.pkl".format(n, corpus_name))
     with open(file, 'wb') as f:
-		for k,v in model.items():
-			f.write("{},{}\n".format(str(k),str(v)))
-    
+        for k,v in model.items():
+            f.write("{},{}\n".format(str(k),str(v)))
+    print('done')
 
 
 def load_ngram(input_path):
