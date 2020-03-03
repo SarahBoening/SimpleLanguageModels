@@ -1,3 +1,4 @@
+import csv
 import os
 from nltk import ngrams, trigrams
 import nltk.corpus
@@ -60,7 +61,7 @@ def load_ngram(input_path):
     return model
 
 
-def predict(model, text, max_len):
+def predict(model, is_count, text, max_len):
     sentence_finished = False
 
     for i in range(max_len):
@@ -109,14 +110,14 @@ def model_ngram(n, data):
 
 
 if __name__ == "__main__":
-    input_path = "./Ngram/output/model_3_java.pkl"
+    input_path = "./Ngram/output/model_3_java.csv"
     output_path = "./Ngram/output/"
     data_path = "/home/nilo4793/media/Split_Corpus/raw_files/train/subset/"
     #data_path = ""
     corpus = "java"
     gen = 2
-    model = True
-    load_data = True
+    model = False
+    load_data = False
 
     if load_data:
         if data_path:
