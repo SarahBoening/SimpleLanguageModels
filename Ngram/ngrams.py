@@ -27,7 +27,7 @@ def load_text(path):
                     #list.append(text)
     print("done")
     return text
-
+	
 
 def preprocess_text(data_path):
     data = nltk.tokenize.sent_tokenize(load_text(data_path))
@@ -39,15 +39,28 @@ def preprocess_text(data_path):
 def save_ngram(model, output_path, n, corpus_name):
     ''' save model '''
     print('saving ...')
+    '''
     file = os.path.join(output_path, "model_{}_{}.pkl".format(n, corpus_name))
-    with open(file, 'wb') as f:
+    with open(file, 'w') as f:
         for k,v in model.items():
-            f.write("{},{}\n".format(str(k),str(v)))
+            f.write("{},{}\n".format(k,v))
+    '''
+    file = os.path.join(output_path, "model_{}_{}.pkl".format(n, corpus_name))
+    output = open(file, 'wb')
+    pickle.dump(model, output)
+    output.close() 
     print('done')
 
 
 def load_ngram(input_path):
     '''load model'''
+    '''
+    model = {}
+    with open(input_path, 'r') as f:
+        for line in f:
+            (key, val) = line.split(',')
+            model[key]= int(val)
+    '''
     pkl_file = open(input_path, 'rb')
     model = pickle.load(pkl_file)
     pkl_file.close()
@@ -96,17 +109,20 @@ def model_ngram(n, data):
 
 
 if __name__ == "__main__":
-    input_path = "./Ngram/output/model_3_trump.pkl"
+    input_path = "./Ngram/output/model_3_java.pkl"
     output_path = "./Ngram/output/"
-    data_path = "/home/nilo4793/media/Split_Corpus/raw_files/train/"
+    data_path = "/home/nilo4793/media/Split_Corpus/raw_files/train/subset/"
     #data_path = ""
     corpus = "java"
     gen = 2
     model = True
-    if data_path:
-        data = preprocess_text(data_path)
-    else:
-        data = nltk.corpus.gutenberg.sents('austen-emma.txt')
+    load_data = True
+
+    if load_data:
+        if data_path:
+            data = preprocess_text(data_path)
+        else:
+            data = nltk.corpus.gutenberg.sents('austen-emma.txt')
 
     if not model:
         m = load_ngram(input_path)
@@ -115,5 +131,5 @@ if __name__ == "__main__":
         m = model_ngram(n, data)
         save_ngram(m, output_path, n, corpus)
 
-    #start = [None, None]
-    #predict(m, start, gen)
+    start = [None, None]
+    predict(m, start, gen)
