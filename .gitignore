@@ -1,4 +1,5 @@
 venv
-RNN/output/
+RNN/output
 Ngram/output/
 RNN/vtest
+RNN/__pycache__

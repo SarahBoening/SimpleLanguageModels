@@ -19,14 +19,15 @@ def load_text(path):
     else:
         files = os.listdir(path)
         for file in files:
-            if file.endswith(".raw"):
+            if file.endswith(".raw") and not file.startswith('cached'):
+                print('loading file: ', file)
                 source = os.path.join(path, file)
                 with open(source, "r", errors='ignore') as f:
                     text += f.read()
                     #list.append(text)
     print("done")
     return text
-
+	
 
 def preprocess_text(data_path):
     data = nltk.tokenize.sent_tokenize(load_text(data_path))
@@ -108,17 +109,20 @@ def model_ngram(n, data):
 
 
 if __name__ == "__main__":
-    input_path = "./Ngram/output/model_3_trump.pkl"
+    input_path = "./Ngram/output/model_3_java.pkl"
     output_path = "./Ngram/output/"
-    data_path = "./LSTM/data/trump.txt"
+    data_path = "/home/nilo4793/media/Split_Corpus/raw_files/train/subset/"
     #data_path = ""
-    corpus = "trump"
-    gen = 200
+    corpus = "java"
+    gen = 2
     model = True
-    if data_path:
-        data = preprocess_text(data_path)
-    else:
-        data = nltk.corpus.gutenberg.sents('austen-emma.txt')
+    load_data = True
+
+    if load_data:
+        if data_path:
+            data = preprocess_text(data_path)
+        else:
+            data = nltk.corpus.gutenberg.sents('austen-emma.txt')
 
     if not model:
         m = load_ngram(input_path)

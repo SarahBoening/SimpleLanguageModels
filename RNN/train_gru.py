@@ -16,7 +16,7 @@ flags = Namespace(
     seq_size=32,
     batch_size=16,
     embedding_size=64,
-    lstm_size=64,
+    gru_size=64,
     gradients_norm=5,
     initial_words=['I', 'am'],
     do_predict=True,
@@ -57,25 +57,24 @@ def get_batches(in_text, out_text, batch_size, seq_size):
 
 
 class RNNModule(nn.Module):
-    def __init__(self, n_vocab, seq_size, embedding_size, lstm_size):
+    def __init__(self, n_vocab, seq_size, embedding_size, gru_size):
         super(RNNModule, self).__init__()
         self.seq_size = seq_size
-        self.lstm_size = lstm_size
+        self.gru_size = gru_size
         self.embedding = nn.Embedding(n_vocab, embedding_size)
-        self.lstm = nn.LSTM(embedding_size,
-                            lstm_size,
+        self.gru = nn.GRU(embedding_size,
+                            gru_size,
                             batch_first=True)
-        self.dense = nn.Linear(lstm_size, n_vocab)
+        self.dense = nn.Linear(gru_size, n_vocab)
 
     def forward(self, x, prev_state):
         embed = self.embedding(x)
-        output, state = self.lstm(embed, prev_state)
+        output, state = self.gru(embed, prev_state)
         logits = self.dense(output)
         return logits, state
 
     def zero_state(self, batch_size):
-        return (torch.zeros(1, batch_size, self.lstm_size),
-                torch.zeros(1, batch_size, self.lstm_size))
+        return torch.zeros(1, batch_size, self.gru_size)
 
 
 def get_loss_and_train_op(net, lr=0.001):
@@ -89,30 +88,29 @@ def predict(device, net, words, n_vocab, vocab_to_int, int_to_vocab, top_k=5):
     net.eval()
     words = flags.initial_words
 
-    state_h, state_c = net.zero_state(1)
+    state_h = net.zero_state(1)
     state_h = state_h.to(device)
-    state_c = state_c.to(device)
     for w in words:
         ix = torch.tensor([[vocab_to_int[w]]]).to(device)
-        output, (state_h, state_c) = net(ix, (state_h, state_c))
+        output, state_h = net(ix, state_h)
 
     choice = torch.argmax(output[0]).item()
     #_, top_ix = torch.topk(output[0], k=top_k)
     #choices = top_ix.tolist()
     #choice = choices[0][0]
-    #print(int_to_vocab[choice])
+    print(int_to_vocab[choice])
     words.append(int_to_vocab[choice])
 
     for _ in range(100):
         ix = torch.tensor([[choice]]).to(device)
-        output, (state_h, state_c) = net(ix, (state_h, state_c))
+        output, state_h = net(ix, state_h)
 
         #_, top_ix = torch.topk(output[0], k=top_k)
         #choices = top_ix.tolist()
         #choice = choices[0][0]
         choice = torch.argmax(output[0]).item()
         words.append(int_to_vocab[choice])
-        #print(int_to_vocab[choice])
+        print(int_to_vocab[choice])
     print(' '.join(words).encode('utf-8'))
 
 
@@ -123,13 +121,13 @@ def evaluate():
 
 def main():
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_ids
+    os.environ["CUDA_VISIBLE_DEVICES"] = flags.gpu_ids
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     int_to_vocab, vocab_to_int, n_vocab, in_text, out_text = get_data_from_file(
         flags.train_file, flags.batch_size, flags.seq_size)
 
     net = RNNModule(n_vocab, flags.seq_size,
-                    flags.embedding_size, flags.lstm_size)
+                    flags.embedding_size, flags.gru_size)
     net = net.to(device)
 
     criterion, optimizer = get_loss_and_train_op(net, 0.01)
@@ -138,9 +136,8 @@ def main():
 
     for e in range(flags.epochs):
         batches = get_batches(in_text, out_text, flags.batch_size, flags.seq_size)
-        state_h, state_c = net.zero_state(flags.batch_size)
+        state_h = net.zero_state(flags.batch_size)
         state_h = state_h.to(device)
-        state_c = state_c.to(device)
         for x, y in batches:
             iteration += 1
             net.train()
@@ -150,7 +147,7 @@ def main():
             x = torch.tensor(x).to(device)
             y = torch.tensor(y).to(device)
 
-            logits, (state_h, state_c) = net(x, (state_h, state_c))
+            logits, state_h = net(x, state_h)
             loss = criterion(logits.transpose(1, 2), y)
 
             loss_value = loss.item()
@@ -158,7 +155,6 @@ def main():
             loss.backward()
 
             state_h = state_h.detach()
-            state_c = state_c.detach()
 
             _ = torch.nn.utils.clip_grad_norm_(
                 net.parameters(), flags.gradients_norm)
