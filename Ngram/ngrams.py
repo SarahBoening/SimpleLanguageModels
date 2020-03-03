@@ -51,7 +51,7 @@ def save_ngram(model, output_path, n, corpus_name):
 
 def load_ngram(input_path):
     '''load model'''
-    print('loading')
+    print('loading model')
     model = defaultdict(dict)
     with open(input_path, 'r', encoding='UTF-8', errors='replace') as csv_file:
         for line in csv_file:
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     data_path = "/home/nilo4793/media/Split_Corpus/raw_files/train/subset/"
     #data_path = ""
     corpus = "java"
-    gen = 2
+    gen = 10
     model = False
     load_data = False
 
