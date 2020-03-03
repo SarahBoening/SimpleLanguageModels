@@ -37,17 +37,25 @@ def preprocess_text(data_path):
 
 def save_ngram(model, output_path, n, corpus_name):
     ''' save model '''
-    file = os.path.join(output_path, "model_{}_{}.pkl".format(n, corpus_name))
-    output = open(file, 'wb')
-    pickle.dump(model, output)
-    output.close()
+    print('saving')
+    file = os.path.join(output_path, "model_{}_{}.csv".format(n, corpus_name))
+    with open(file, 'w', encoding='UTF-8', errors='replace',newline='') as csv_file:
+        csvwriter = csv.writer(csv_file, delimiter='\t')
+        for w1_w2 in model:
+            for w3 in model[w1_w2]:
+                csvwriter.writerow([w1_w2, w3, model[w1_w2][w3]])
+    print('done')
 
 
 def load_ngram(input_path):
     '''load model'''
-    pkl_file = open(input_path, 'rb')
-    model = pickle.load(pkl_file)
-    pkl_file.close()
+    print('loading')
+    model = defaultdict(dict)
+    with open(input_path, 'r', encoding='UTF-8', errors='replace') as csv_file:
+        for line in csv_file:
+            w1_w2, w3, prob = line.split('\t')
+            model[str(w1_w2)][str(w3)] = float(prob)
+    print('done')
     return model
 
 
@@ -56,18 +64,25 @@ def predict(model, text, max_len):
 
     for i in range(max_len):
         # select a random probability threshold
+        # random.seed(6)
         r = random.random()
         accumulator = .0
-
-        for word in model[tuple(text[-2:])].keys():
-            accumulator += model[tuple(text[-2:])][word]
-            # select words that are above the probability threshold
-            if accumulator >= r:
-                text.append(word)
-                break
-
-        #if text[-2:] == [None, None]:
-            #sentence_finished = True
+        if is_count:
+            for word in model[tuple(text[-2:])].keys():
+                accumulator += model[tuple(text[-2:])][word]
+                # select words that are above the probability threshold
+                if accumulator >= r:
+                    text.append(word)
+                    break
+        else:
+            for word in model[str(tuple(text[-2:]))].keys():
+                accumulator += model[str(tuple(text[-2:]))][word]
+                # select words that are above the probability threshold
+                if accumulator >= r:
+                    text.append(word)
+                    break
+        # if text[-2:] == [None, None]:
+        # sentence_finished = True
 
     print(' '.join([t for t in text if t]))
 
@@ -113,4 +128,4 @@ if __name__ == "__main__":
         save_ngram(m, output_path, n, corpus)
 
     start = [None, None]
-    predict(m, start, gen)
+    predict(m, model, start, gen)
