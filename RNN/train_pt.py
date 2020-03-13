@@ -9,19 +9,19 @@ from argparse import Namespace
 
 
 flags = Namespace(
-    train_file='./data/trump.txt',
-    output_name='lstm_trump',
-    gpu_ids=0,
-    epochs=200,
+    train_file='/home/nilo4793/Documents/Thesis/BPE/java_0125_text_enc.txt',
+    output_name='lstm_BPE_Test',
+    gpu_ids="0",
+    epochs=1,
     seq_size=32,
     batch_size=16,
     embedding_size=64,
     lstm_size=64,
     gradients_norm=5,
-    initial_words=['I', 'am'],
+    initial_words=['public', 'class'],
     do_predict=True,
     predict_top_k=5,
-    checkpoint_path='./output/',
+    checkpoint_path='./RNN/output/',
 )
 
 
@@ -123,7 +123,7 @@ def evaluate():
 
 def main():
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_ids
+    os.environ["CUDA_VISIBLE_DEVICES"] = flags.gpu_ids
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     int_to_vocab, vocab_to_int, n_vocab, in_text, out_text = get_data_from_file(
         flags.train_file, flags.batch_size, flags.seq_size)
