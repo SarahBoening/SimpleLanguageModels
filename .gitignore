@@ -3,3 +3,4 @@ RNN/output
 Ngram/output/
 RNN/vtest
 RNN/__pycache__
+Embeddings/output
