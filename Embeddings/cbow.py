@@ -5,6 +5,29 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+class CBOW(nn.Module):
+    def __init__(self, vocab_size, embedding_dim):
+        super(CBOW, self).__init__()
+        self.embeddings = nn.Embedding(vocab_size, embedding_dim) # embeddings
+        self.linear1 = nn.Linear(embedding_dim, vocab_size)
+
+    def forward(self, inputs):
+        embeds = self.embeddings(inputs)
+        add_embeds = torch.sum(embeds, dim=0).view(1,-1)
+        out = self.linear1(add_embeds)
+        log_probs = F.log_softmax(out)
+        return log_probs
+
+# create your model and train.  here are some functions to help you make
+# the data ready for use by your module
+
+
+def make_context_vector(context, word_to_ix):
+    idxs = [word_to_ix[w] for w in context]
+    tensor = torch.LongTensor(idxs)
+    return Variable(tensor)
+
+
 torch.manual_seed(1)
 
 outpath = ""
@@ -29,37 +52,12 @@ for i in range(2, len(raw_text) - 2):
     target = raw_text[i]
     data.append((context, target))
 print(data[:5])
-
-
-class CBOW(nn.Module):
-    def __init__(self, vocab_size, embedding_dim):
-        super(CBOW, self).__init__()
-        self.embeddings = nn.Embedding(vocab_size, embedding_dim) # embeddings
-        self.linear1 = nn.Linear(embedding_dim, vocab_size)
-
-    def forward(self, inputs):
-        embeds = self.embeddings(inputs)
-        add_embeds = torch.sum(embeds, dim=0).view(1,-1)
-        out = self.linear1(add_embeds)
-        log_probs = F.log_softmax(out)
-        return log_probs
-
-# create your model and train.  here are some functions to help you make
-# the data ready for use by your module
-
-
-def make_context_vector(context, word_to_ix):
-    idxs = [word_to_ix[w] for w in context]
-    tensor = torch.LongTensor(idxs)
-    return Variable(tensor)
-
-
-make_context_vector(data[0][0], word_to_ix)  # example
+#make_context_vector(data[0][0], word_to_ix)  # example
 
 # loss model optimizer
 losses = []
 loss_function = nn.NLLLoss()
-model = CBOW(vocab_size, embedding_dim=20, context_size=CONTEXT_SIZE)
+model = CBOW(vocab_size, embedding_dim=20)
 optimizer = optim.SGD(model.parameters(), lr=0.001)
 
 #10 epoch
