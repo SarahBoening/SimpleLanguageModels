@@ -15,7 +15,7 @@ class CBOW(nn.Module):
         embeds = self.embeddings(inputs)
         add_embeds = torch.sum(embeds, dim=0).view(1,-1)
         out = self.linear1(add_embeds)
-        log_probs = F.log_softmax(out)
+        log_probs = F.log_softmax(out, dim=1)
         return log_probs
 
 # create your model and train.  here are some functions to help you make
@@ -30,7 +30,7 @@ def make_context_vector(context, word_to_ix):
 
 torch.manual_seed(1)
 
-outpath = ""
+outpath = "./Embeddings/output/"
 
 CONTEXT_SIZE = 3  # 2 words to the left, 2 to the right
 raw_text = """We are about to study the idea of a computational process.
@@ -62,7 +62,9 @@ optimizer = optim.SGD(model.parameters(), lr=0.001)
 
 #10 epoch
 oldloss = 10000000
-for epoch in range(100):
+epochs = 100
+for epoch in range(epochs):
+    print("Epoch ", epoch, "/ ", epochs)
     total_loss = torch.FloatTensor([0])
     for context, target in data:
         context_idxs = [word_to_ix[w] for w in context]
@@ -73,14 +75,13 @@ for epoch in range(100):
         log_probs = model(context_var)
 
         loss = loss_function(log_probs,target_var)
-        if loss < oldloss:
-            torch.save(model.state_dict(), os.path.join(outpath, "cbow_bestcp_loss_{}.pth".format(loss)))
-        oldloss = loss
-
         loss.backward()
         optimizer.step()
 
         total_loss += loss.data
-    losses.append(total_loss)
 
+    losses.append(total_loss)
+    if loss < oldloss:
+        torch.save(model.state_dict(), os.path.join(outpath, "cbow_bestcp_loss_{}.pth".format(loss)))
+    oldloss= loss
 torch.save(model.state_dict(), os.path.join(outpath, "cbow_finished_loss_{}.pth".format(loss)))
