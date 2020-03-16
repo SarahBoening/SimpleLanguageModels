@@ -80,12 +80,12 @@ def load_text(path, tokenizer):
 torch.manual_seed(1)
 
 #path = "0000.java_github_5k.raw"
-path = "/home/nilo4793/media/Split_Corpus/smaller/small/train/"
-outpath = "./Embeddings/output/"
+path = "/home/nilo4793/Documents/Thesis/corpora/Java/small/train/"
+outpath = "./output/"
 #outpath = "G:\\MASTER\\outputs\\embeddings\\"
 
 #vocab_path = "vocab_small.txt"
-vocab_path = "/home/nilo4793/media/Split_Corpus/smaller/small/vocab_nltk.txt"
+vocab_path = "/home/nilo4793/Documents/Thesis/corpora/Java/small/vocab_small.txt"
 CONTEXT_SIZE = 2  # 2 words to the left, 2 to the right
 tokenizer = tok.Tokenizer(vocab_path, "java")
 
@@ -93,13 +93,14 @@ raw_text = list(chain.from_iterable(load_text(path, tokenizer)))
 
 # By deriving a set from `raw_text`, we deduplicate the array
 vocab_size = tokenizer.get_vocab_len()
-
+print("building context vectors")
 data = []
 for i in range(2, len(raw_text) - 2):
     context = [raw_text[i - 2], raw_text[i - 1],
                raw_text[i + 1], raw_text[i + 2]]
     target = raw_text[i]
     data.append((context, target))
+print("done")
 print(data[:5])
 # make_context_vector(data[0][0], word_to_ix)  # example
 
@@ -110,7 +111,7 @@ model = CBOW(vocab_size, embedding_dim=64)
 optimizer = optim.SGD(model.parameters(), lr=0.001)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = model.to(device)
-
+print("starting training")
 # 10 epoch
 oldloss = 10000000
 epochs = 100
@@ -118,6 +119,7 @@ for epoch in range(epochs):
     print("Epoch ", epoch, "/ ", epochs)
     total_loss = torch.FloatTensor([0])
     for context, target in data:
+        model.train()
         context_idxs = [tokenizer.convert_tokens_to_ids(w) for w in context]
         target_idx = tokenizer.convert_tokens_to_ids(target)
         context_var = Variable(torch.LongTensor(context_idxs))
