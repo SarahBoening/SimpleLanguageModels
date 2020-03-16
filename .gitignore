@@ -4,3 +4,4 @@ Ngram/output/
 RNN/vtest
 RNN/__pycache__
 Embeddings/output
+Tokenizer/__pycache__
