@@ -1,5 +1,8 @@
 from javalang import tokenizer as javatok
 import collections
+import re
+import nltk
+from itertools import chain
 '''
 Based on the tokenizer from Huggingface Transformer
 '''
@@ -40,7 +43,11 @@ class Tokenizer:
     def _tokenize(self, text):
         if self.type == "java":
             """tokenizes a text with the java tokenizer"""
-            return [x.value for x in list(javatok.tokenize(text))]
+            data = nltk.word_tokenize(text)
+            for i, word in enumerate(data):
+                data[i] = re.findall(r"\w+|[^\w\s]]", word)
+            return list(chain.from_iterable(data))
+            #return [x.value for x in list(javatok.tokenize(text))]
         else:
             return []
 
