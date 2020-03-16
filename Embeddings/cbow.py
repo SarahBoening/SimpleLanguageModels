@@ -1,10 +1,13 @@
+import sys
+sys.path.append('../.')
+
 import os
 import torch
 from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from Tokenizer import tokenizer
+import Tokenizer.tokenizer as tok
 from itertools import chain
 
 
@@ -43,7 +46,7 @@ def load_text(path, tokenizer):
                 print('loading tokenized file: ', path)
                 text = f.read()
                 list.append(text)
-        elif not path.startswith('cached') and path.endswith(".raw"):
+        elif not path.startswith('cached') and path.endswith(".raw") and not os.path.isfile("tokenized_"+path):
             print('loading and tokenizing file: ', path)
             with open(path, "r", encoding="utf-8", errors='replace') as f:
                 text = f.read()
@@ -61,7 +64,7 @@ def load_text(path, tokenizer):
                     text = f.read()
                     list.append(text)
 
-            elif not file.startswith('cached') and file.endswith(".raw"):
+            elif not file.startswith('cached') and file.endswith(".raw") and not os.path.isfile(os.path.join(path,"tokenized_"+file)):
                 print('loading and tokenizing file: ', file)
 
                 with open(source, "r", encoding="utf-8", errors='replace') as f:
@@ -84,7 +87,7 @@ outpath = "./Embeddings/output/"
 #vocab_path = "vocab_small.txt"
 vocab_path = "/home/nilo4793/media/Split_Corpus/smaller/small/vocab_nltk.txt"
 CONTEXT_SIZE = 2  # 2 words to the left, 2 to the right
-tokenizer = tokenizer.Tokenizer(vocab_path, "java")
+tokenizer = tok.Tokenizer(vocab_path, "java")
 
 raw_text = list(chain.from_iterable(load_text(path, tokenizer)))
 
@@ -105,6 +108,8 @@ losses = []
 loss_function = nn.NLLLoss()
 model = CBOW(vocab_size, embedding_dim=64)
 optimizer = optim.SGD(model.parameters(), lr=0.001)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+model = model.to(device)
 
 # 10 epoch
 oldloss = 10000000
