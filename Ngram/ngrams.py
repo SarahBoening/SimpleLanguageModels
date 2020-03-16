@@ -15,7 +15,7 @@ def load_text(path):
     print("loading files...")
     text = ""
     if os.path.isfile(path):
-        with open(path, "r", errors='ignore') as f:
+        with open(path, "r", errors='replace') as f:
             text += f.read()
     else:
         files = os.listdir(path)
@@ -23,12 +23,12 @@ def load_text(path):
             if file.endswith(".raw") and not file.startswith('cached'):
                 print('loading file: ', file)
                 source = os.path.join(path, file)
-                with open(source, "r", errors='ignore') as f:
+                with open(source, "r", errors='replace') as f:
                     text += f.read()
-                    #list.append(text)
+                    # list.append(text)
     print("done")
     return text
-	
+
 
 def preprocess_text(data_path):
     data = nltk.tokenize.sent_tokenize(load_text(data_path))
@@ -41,7 +41,7 @@ def save_ngram(model, output_path, n, corpus_name):
     ''' save model '''
     print('saving')
     file = os.path.join(output_path, "model_{}_{}.csv".format(n, corpus_name))
-    with open(file, 'w', encoding='UTF-8', errors='replace',newline='') as csv_file:
+    with open(file, 'w', encoding='UTF-8', errors='replace', newline='') as csv_file:
         csvwriter = csv.writer(csv_file, delimiter='\t')
         for w1_w2 in model:
             for w3 in model[w1_w2]:
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     input_path = "./Ngram/output/model_3_java.csv"
     output_path = "./Ngram/output/"
     data_path = "/home/nilo4793/media/Split_Corpus/raw_files/train/subset/"
-    #data_path = ""
+    # data_path = ""
     corpus = "java"
     gen = 10
     model = False

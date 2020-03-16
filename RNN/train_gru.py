@@ -1,3 +1,6 @@
+import sys
+sys.path.append('../.')
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -5,41 +8,74 @@ import torch.nn.functional as F
 import numpy as np
 from collections import Counter
 import os
-from argparse import Namespace
+import argparse
+
+fr
+
+parser = argparse.ArgumentParser(description='Baseline GRU model')
+
+parser.add_argument("--train_file", type=str, default="./data/trump.txt", help="input dir of data")
+parser.add_argument("--output_name", type=str, default="gru_trump", help="Name of the model")
+parser.add_argument("--checkpoint_path", type=str, default="./output/", help="output path for the model")
+parser.add_argument("--vocab_path", type=str, default="./vocab.txt", help="path to vocab file")
+parser.add_argument("--embedmodel_path", type=str, default="../Embedding/output/model.pth", help="path to pretrained embedding model")
+parser.add_argument("--gpu_ids", type=int, default=0, help="IDs of GPUs to be used if available")
+parser.add_argument("--epochs", type=int, default=200, help="No ofs epochs")
+parser.add_argument("--seq_size", type=int, default=32, help="")
+parser.add_argument("--batch_size", type=int, default=16, help="Size of batches")
+parser.add_argument("--embedding_size", type=int, default=64, help="Embedding size for GRU network")
+parser.add_argument("--gru_size", type=int, default=64, help="GRU size")
+parser.add_argument("--gradient_norm", type=int, default=5, help="Gradient normalization")
+parser.add_argument("--initial_words", type=list, default=['I', 'am'], help="List of initial words to predict further")
+parser.add_argument("--do_predict", type=boolean, default=True, help="should network predict at the end")
+parser.add_argument("--predict_top_k", type=int, default=5, help="Top k prediction")
 
 
-flags = Namespace(
-    train_file='./data/trump.txt',
-    output_name='lstm_trump',
-    gpu_ids=0,
-    epochs=200,
-    seq_size=32,
-    batch_size=16,
-    embedding_size=64,
-    gru_size=64,
-    gradients_norm=5,
-    initial_words=['I', 'am'],
-    do_predict=True,
-    predict_top_k=5,
-    checkpoint_path='./output/',
-)
+def get_data_from_file(train_file, batch_size, seq_size, tokenizer):
+    print("loading files...")
+    text = ""
+    liste = []
+    if os.path.isfile(train_file):
+        if path.startswith("tokenized_"):
+            with(open(train_file, "r", encoding="utf-8", errors="replace")) as f:
+                print('loading tokenized file: ', train_file)
+                text = f.read()
+                liste.append(text)
+        elif not train_file.startswith('cached') and train_file.endswith(".raw") and not os.path.isfile("tokenized_"+train_file):
+            print('loading and tokenizing file: ', path)
+            with open(train_file, "r", encoding="utf-8", errors='replace') as f:
+                text = f.read()
+                liste.append(tokenizer._tokenize(text))
+                dest = "tokenized_" + train_file
+                with open(dest, "w", encoding="utf-8", errors="replace")as f:
+                    f.writelines(' '.join(str(j) for j in i) + '\n' for i in list)
+    else:
+        files = os.listdir(train_file)
+        for file in files:
+            source = os.path.join(train_file, file)
+            if file.startswith("tokenized_"):
+                with(open(source, "r", encoding="utf-8", errors="replace")) as f:
+                    print('loading tokenized file: ', file)
+                    text = f.read()
+                    liste.append(text)
 
+            elif not file.startswith('cached') and file.endswith(".raw") and not os.path.isfile(os.path.join(train_file, "tokenized_"+file)):
+                print('loading and tokenizing file: ', file)
 
-def get_data_from_file(train_file, batch_size, seq_size):
-    # TODO for several files
-    with open(train_file, 'r', encoding='utf-8') as f:
-        text = f.read()
-    text = text.split()
+                with open(source, "r", encoding="utf-8", errors='replace') as f:
+                    text = f.read()
+                    liste.append(tokenizer._tokenize(text))
+                    dest = os.path.join(path, "tokenized_" + file)
+                    with open(dest, "w", encoding="utf-8", errors="replace")as f:
+                        f.writelines(' '.join(str(j) for j in i) + '\n' for i in list)
+    print("done")
 
-    word_counts = Counter(text)
-    sorted_vocab = sorted(word_counts, key=word_counts.get, reverse=True)
-    int_to_vocab = {k: w for k, w in enumerate(sorted_vocab)}
-    vocab_to_int = {w: k for k, w in int_to_vocab.items()}
-    n_vocab = len(int_to_vocab)
+    n_vocab = tokenizer.get_vocab_len()
 
     print('Vocabulary size', n_vocab)
-
-    int_text = [vocab_to_int[w] for w in text]
+    raw_text = list(chain.from_iterable(liste))
+    del list
+    int_text = tokenizer.convert_tokens_to_ids(raw_text)
     num_batches = int(len(int_text) / (seq_size * batch_size))
     in_text = int_text[:num_batches * batch_size * seq_size]
     out_text = np.zeros_like(in_text)
@@ -47,13 +83,13 @@ def get_data_from_file(train_file, batch_size, seq_size):
     out_text[-1] = in_text[0]
     in_text = np.reshape(in_text, (batch_size, -1))
     out_text = np.reshape(out_text, (batch_size, -1))
-    return int_to_vocab, vocab_to_int, n_vocab, in_text, out_text
+    return n_vocab, in_text, out_text
 
 
 def get_batches(in_text, out_text, batch_size, seq_size):
     num_batches = np.prod(in_text.shape) // (seq_size * batch_size)
     for i in range(0, num_batches * seq_size, seq_size):
-        yield in_text[:, i:i+seq_size], out_text[:, i:i+seq_size]
+        yield in_text[:, i:i + seq_size], out_text[:, i:i + seq_size]
 
 
 class RNNModule(nn.Module):
@@ -61,16 +97,17 @@ class RNNModule(nn.Module):
         super(RNNModule, self).__init__()
         self.seq_size = seq_size
         self.gru_size = gru_size
-        self.embedding = nn.Embedding(n_vocab, embedding_size)
+        self.encode = nn.Embedding(n_vocab, embedding_size)
         self.gru = nn.GRU(embedding_size,
-                            gru_size,
-                            batch_first=True)
-        self.dense = nn.Linear(gru_size, n_vocab)
+                          gru_size,
+                          batch_first=True)
+        self.decode = nn.Linear(gru_size, n_vocab)
 
     def forward(self, x, prev_state):
-        embed = self.embedding(x)
+        embed = self.encode(x)
         output, state = self.gru(embed, prev_state)
-        logits = self.dense(output)
+        logits = self.decode(output)
+        preds = F.log_softmax(logits, dim=1)
         return logits, state
 
     def zero_state(self, batch_size):
@@ -84,33 +121,33 @@ def get_loss_and_train_op(net, lr=0.001):
     return criterion, optimizer
 
 
-def predict(device, net, words, n_vocab, vocab_to_int, int_to_vocab, top_k=5):
+def predict(device, net, words, n_vocab, tokenizer, top_k=5):
     net.eval()
-    words = flags.initial_words
+    words = args.initial_words
 
     state_h = net.zero_state(1)
     state_h = state_h.to(device)
     for w in words:
-        ix = torch.tensor([[vocab_to_int[w]]]).to(device)
+        ix = torch.tensor([[tokenizer.converts_token_to_id(w)]]).to(device)
         output, state_h = net(ix, state_h)
 
     choice = torch.argmax(output[0]).item()
-    #_, top_ix = torch.topk(output[0], k=top_k)
-    #choices = top_ix.tolist()
-    #choice = choices[0][0]
-    print(int_to_vocab[choice])
-    words.append(int_to_vocab[choice])
+    # _, top_ix = torch.topk(output[0], k=top_k)
+    # choices = top_ix.tolist()
+    # choice = choices[0][0]
+    print(tokenizer.convert_ids_to_tokens(choice))
+    words.append(tokenizer.convert_ids_to_tokens(choice))
 
     for _ in range(100):
         ix = torch.tensor([[choice]]).to(device)
         output, state_h = net(ix, state_h)
 
-        #_, top_ix = torch.topk(output[0], k=top_k)
-        #choices = top_ix.tolist()
-        #choice = choices[0][0]
+        # _, top_ix = torch.topk(output[0], k=top_k)
+        # choices = top_ix.tolist()
+        # choice = choices[0][0]
         choice = torch.argmax(output[0]).item()
-        words.append(int_to_vocab[choice])
-        print(int_to_vocab[choice])
+        words.append(tokenizer.convert_ids_to_tokens(choice))
+        print(tokenizer.convert_ids_to_tokens(choice))
     print(' '.join(words).encode('utf-8'))
 
 
@@ -120,23 +157,31 @@ def evaluate():
 
 
 def main():
+    args = parser.parse_args()
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = flags.gpu_ids
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_ids
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    int_to_vocab, vocab_to_int, n_vocab, in_text, out_text = get_data_from_file(
-        flags.train_file, flags.batch_size, flags.seq_size)
 
-    net = RNNModule(n_vocab, flags.seq_size,
-                    flags.embedding_size, flags.gru_size)
+    tokenizer = tok.Tokenizer(args.vocab_path, "java")
+    n_vocab, in_text, out_text = get_data_from_file(
+        args.train_file, args.batch_size, args.seq_size, tokenizer)
+
+    net = RNNModule(n_vocab, args.seq_size,
+                    args.embedding_size, args.gru_size)
+
+    # load weights from embedding trained model
+    # TODO test if is working
+    net = net.load_state_dict(torch.load(args.embedmodel_path), strict=False)
+
     net = net.to(device)
 
     criterion, optimizer = get_loss_and_train_op(net, 0.01)
 
     iteration = 0
 
-    for e in range(flags.epochs):
-        batches = get_batches(in_text, out_text, flags.batch_size, flags.seq_size)
-        state_h = net.zero_state(flags.batch_size)
+    for e in range(args.epochs):
+        batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
+        state_h = net.zero_state(args.batch_size)
         state_h = state_h.to(device)
         for x, y in batches:
             iteration += 1
@@ -157,22 +202,24 @@ def main():
             state_h = state_h.detach()
 
             _ = torch.nn.utils.clip_grad_norm_(
-                net.parameters(), flags.gradients_norm)
+                net.parameters(), args.gradients_norm)
 
             optimizer.step()
 
             if iteration % 100 == 0:
-                print('Epoch: {}/{}'.format(e, flags.epochs),
+                print('Epoch: {}/{}'.format(e, args.epochs),
                       'Iteration: {}'.format(iteration),
                       'Loss: {}'.format(loss_value))
 
             if iteration % 1000 == 0:
                 torch.save(net.state_dict(),
-                           os.path.join(flags.checkpoint_path, 'checkpoint_pt/model-{}-{}.pth'.format(flags.output_name, iteration)))
+                           os.path.join(args.checkpoint_path,
+                                        'checkpoint_pt/model-{}-{}.pth'.format(args.output_name, iteration)))
     # save model after training
-    torch.save(net, os.path.join(flags.checkpoint_path, 'model-{}-{}.pth'.format(flags.output_name, 'finished')))
-    if flags.do_predict:
-        predict(device, net, flags.initial_words, n_vocab, vocab_to_int, int_to_vocab, top_k=5)
-							
+    torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
+    if args.do_predict:
+        predict(device, net, args.initial_words, n_vocab, tokenizer, top_k=5)
+
+
 if __name__ == '__main__':
     main()
