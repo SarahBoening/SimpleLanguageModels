@@ -155,15 +155,15 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
 
 def evaluate(model, tokenizer, criterion):
     # TODO write evaluation
-	model.eval()
-	total_loss= 0.
-	state_h, state_c = net.zero_state(args.batch_size)
-	# get data
-	with torch.no_grad():
-		# iterate over batches
-		# data = input, y = target
-		logits, (state_h, state_c) = model(data, (state_h, state_c))
-		total_loss += len(data) * criterion(logits.transpose(1, 2), y).item()
+    model.eval()
+    total_loss= 0.
+    state_h, state_c = net.zero_state(args.batch_size)
+    # get data
+    with torch.no_grad():
+	# iterate over batches
+	# data = input, y = target
+	logits, (state_h, state_c) = model(data, (state_h, state_c))
+	total_loss += len(data) * criterion(logits.transpose(1, 2), y).item()
     return total_loss / (len(data_source) -1 )
 
 
@@ -191,9 +191,9 @@ def main():
     criterion, optimizer = get_loss_and_train_op(net, 0.01)
 
     iteration = 0
-	total_loss = 0.
-	start_time = time.time()
-	best_ppl = 10000
+    total_loss = 0.
+    start_time = time.time()
+    best_ppl = 10000
     for e in range(args.epochs):
         batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
         state_h, state_c = net.zero_state(args.batch_size)
@@ -223,28 +223,26 @@ def main():
 
             optimizer.step()
 			
-			total_loss += loss_value
+  	    total_loss += loss_value
 			
             if iteration % 100 == 0 and iteration > 0:
-				cur_loss = total_loss / 100
-				perpl = math.exp(cur_loss)
-				elapsed = time.time() - start_time
+                cur_loss = total_loss / 100
+		perpl = math.exp(cur_loss)
+		elapsed = time.time() - start_time
                 print('Epoch: {}/{}'.format(e, args.epochs),
                       'Iteration: {}'.format(iteration),
                       'Loss: {}'.format(cur_loss),
-					  'Perplexity: {}'.format(perpl),
-					   'ms/batch: {}'.format(elapsed * 1000 / 100))
-				total_loss = 0
-				start_time = time.time()
-				if perpl < best_ppl:
-					print("saving best checkpoint")
-					torch.save(net.state_dict(),
-                           os.path.join(args.checkpoint_path,
-                                        'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name, perpl)))
-					best_ppl = perpl
+		      'Perplexity: {}'.format(perpl),
+		      'ms/batch: {}'.format(elapsed * 1000 / 100))
+		total_loss = 0
+		start_time = time.time()
+		if perpl < best_ppl:
+		    print("saving best checkpoint")
+		    torch.save(net.state_dict(), os.path.join(args.checkpoint_path, 'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name, perpl)))
+		    best_ppl = perpl
     # save model after training
     torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
-	print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
+    print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
 	
     if args.do_predict:
         predict(device, net, args.initial_words, n_vocab, tokenizer, top_k=5)

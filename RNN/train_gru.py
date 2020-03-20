@@ -11,7 +11,6 @@ from collections import Counter
 import os
 import argparse
 
-fr
 
 parser = argparse.ArgumentParser(description='Baseline GRU model')
 
@@ -156,15 +155,15 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
 
 def evaluate(model, tokenizer, criterion):
     # TODO write evaluation
-	model.eval()
-	total_loss= 0.
-	state_h = net.zero_state(args.batch_size)
-	# get data
-	with torch.no_grad():
-		# iterate over batches
-		# data = input, y = target
-		logits, state_h = model(data, state_h)
-		total_loss += len(data) * criterion(logits.transpose(1, 2), y).item()
+    model.eval()
+    total_loss= 0.
+    state_h = net.zero_state(args.batch_size)
+    # get data
+    with torch.no_grad():
+        # iterate over batches
+	# data = input, y = target
+	logits, state_h = model(data, state_h)
+	total_loss += len(data) * criterion(logits.transpose(1, 2), y).item()
     return total_loss / (len(data_source) -1 )
 
 
@@ -188,10 +187,10 @@ def main():
     net = net.to(device)
 
     criterion, optimizer = get_loss_and_train_op(net, 0.01)
-	best_ppl = 10000
+    best_ppl = 10000
     iteration = 0
-	total_loss = 0.
-	start_time = time.time()
+    total_loss = 0.
+    start_time = time.time()
     for e in range(args.epochs):
         batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
         state_h = net.zero_state(args.batch_size)
@@ -219,25 +218,23 @@ def main():
 
             optimizer.step()
 			
-			total_loss += loss_value
+            total_loss += loss_value
 			
             if iteration % 100 == 0 and iteration > 0:
-				cur_loss = total_loss / 100
-				perpl = math.exp(cur_loss)
-				elapsed = time.time() - start_time
+	        cur_loss = total_loss / 100
+		perpl = math.exp(cur_loss)
+		elapsed = time.time() - start_time
                 print('Epoch: {}/{}'.format(e, args.epochs),
                       'Iteration: {}'.format(iteration),
                       'Loss: {}'.format(cur_loss),
-					  'Perplexity: {}'.format(perpl),
-					   'ms/batch: {}'.format(elapsed * 1000 / 100))
-				total_loss = 0
-				start_time = time.time()
-				if perpl < best_ppl:
-					print("saving best checkpoint")
-					torch.save(net.state_dict(),
-                           os.path.join(args.checkpoint_path,
-                                        'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name, perpl)))
-					best_ppl = perpl					
+		      'Perplexity: {}'.format(perpl),
+		      'ms/batch: {}'.format(elapsed * 1000 / 100))
+		total_loss = 0
+		start_time = time.time()
+		if perpl < best_ppl:
+		    print("saving best checkpoint")
+		    torch.save(net.state_dict(), os.path.join(args.checkpoint_path, 'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name, perpl)))
+		    best_ppl = perpl					
 				
 
             if iteration % 1000 == 0:
@@ -246,7 +243,7 @@ def main():
                                         'checkpoint_pt/model-{}-{}.pth'.format(args.output_name, iteration)))
     # save model after training
     torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
-	print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
+    print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
     if args.do_predict:
         predict(device, net, args.initial_words, n_vocab, tokenizer, top_k=5)
 

@@ -70,12 +70,12 @@ def load_text(path, tokenizer):
 torch.manual_seed(1)
 
 #path = "0000.java_github_5k.raw"
-path = "/home/nilo4793/Documents/Thesis/corpora/Java/small/train/"
-outpath = "./output/"
+path = "/home/nilo4793/raid/corpora/Java/small/train/"
+outpath = "/home/nilo4793/raid/output/embedding/javasmall/"
 #outpath = "G:\\MASTER\\outputs\\embeddings\\"
 
 #vocab_path = "vocab_small.txt"
-vocab_path = "/home/nilo4793/Documents/Thesis/corpora/Java/small/vocab_small.txt"
+vocab_path = "/home/nilo4793/raid/corpora/Java/small/vocab_nltk.txt"
 CONTEXT_SIZE = 2  # 2 words to the left, 2 to the right
 tokenizer = tok.Tokenizer(vocab_path, "java")
 
@@ -110,7 +110,7 @@ for epoch in range(epochs):
     print("Epoch ", epoch, "/ ", epochs)
     total_loss = torch.FloatTensor([0])
     for context, target in data:
-		iteration += 1
+        iteration += 1
         model.train()
         context_idxs = [tokenizer.convert_tokens_to_ids(w) for w in context]
         target_idx = tokenizer.convert_tokens_to_ids(target)
@@ -125,23 +125,22 @@ for epoch in range(epochs):
 
         total_loss += loss.item()
 
-		if iteration % 100 == 0 and iteration > 0:
-					cur_loss = total_loss / 100
-					perpl = math.exp(cur_loss)
-					elapsed = time.time() - start_time
-					print('Epoch: {}/{}'.format(e, args.epochs),
-						  'Iteration: {}'.format(iteration),
-						  'Loss: {}'.format(cur_loss),
-						  'Perplexity: {}'.format(perpl),
-						   'ms/batch: {}'.format(elapsed * 1000 / 100))
-					total_loss = 0
-					start_time = time.time()
-					if perpl < best_ppl:
-						print("saving best checkpoint")
-						torch.save(net.state_dict(),
-							   os.path.join(args.checkpoint_path,
-											'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name, perpl)))
-						best_ppl = perpl
+        if iteration % 100 == 0 and iteration > 0:
+	    cur_loss = total_loss / 100.
+            perpl = math.exp(cur_loss)
+            elapsed = time.time() - start_time
+	    print('Epoch: {}/{}'.format(e, args.epochs),
+	    	  'Iteration: {}'.format(iteration),
+	    	  'Loss: {}'.format(cur_loss),
+	   	  'Perplexity: {}'.format(perpl),
+	          'ms/batch: {}'.format(elapsed * 1000 / 100))
+	    total_loss = 0
+	    start_time = time.time()
+	if perpl < best_ppl:
+	    print("saving best checkpoint")
+	    torch.save(net.state_dict(), os.path.join(args.checkpoint_path,'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name, perpl)))
+	    best_ppl = perpl
+
 	losses.append(total_loss)
 	
 torch.save(model.state_dict(), os.path.join(outpath, "cbow_finished_loss_{}.pth".format(loss)))
