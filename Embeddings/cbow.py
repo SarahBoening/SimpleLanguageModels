@@ -1,4 +1,5 @@
 import sys
+
 sys.path.append('../.')
 
 import os
@@ -36,7 +37,7 @@ def load_text(path, tokenizer):
                 print('loading tokenized file: ', path)
                 text = f.read()
                 list.append(text)
-        elif not path.startswith('cached') and path.endswith(".raw") and not os.path.isfile("tokenized_"+path):
+        elif not path.startswith('cached') and path.endswith(".raw") and not os.path.isfile("tokenized_" + path):
             print('loading and tokenizing file: ', path)
             with open(path, "r", encoding="utf-8", errors='replace') as f:
                 text = f.read()
@@ -54,7 +55,8 @@ def load_text(path, tokenizer):
                     text = f.read()
                     list.append(text)
 
-            elif not file.startswith('cached') and file.endswith(".raw") and not os.path.isfile(os.path.join(path,"tokenized_"+file)):
+            elif not file.startswith('cached') and file.endswith(".raw") and not os.path.isfile(
+                    os.path.join(path, "tokenized_" + file)):
                 print('loading and tokenizing file: ', file)
 
                 with open(source, "r", encoding="utf-8", errors='replace') as f:
@@ -69,12 +71,12 @@ def load_text(path, tokenizer):
 
 torch.manual_seed(1)
 
-#path = "0000.java_github_5k.raw"
+# path = "0000.java_github_5k.raw"
 path = "/home/nilo4793/raid/corpora/Java/small/train/"
 outpath = "/home/nilo4793/raid/output/embedding/javasmall/"
-#outpath = "G:\\MASTER\\outputs\\embeddings\\"
+# outpath = "G:\\MASTER\\outputs\\embeddings\\"
 
-#vocab_path = "vocab_small.txt"
+# vocab_path = "vocab_small.txt"
 vocab_path = "/home/nilo4793/raid/corpora/Java/small/vocab_nltk.txt"
 CONTEXT_SIZE = 2  # 2 words to the left, 2 to the right
 tokenizer = tok.Tokenizer(vocab_path, "java")
@@ -103,6 +105,8 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = model.to(device)
 print("starting training")
 # 10 epoch
+best_ppl = 100000
+perpl = 100000
 oldloss = 10000000
 epochs = 100
 iteration = 0
@@ -126,21 +130,23 @@ for epoch in range(epochs):
         total_loss += loss.item()
 
         if iteration % 100 == 0 and iteration > 0:
-	    cur_loss = total_loss / 100.
+            cur_loss = total_loss / 100.
             perpl = math.exp(cur_loss)
             elapsed = time.time() - start_time
-	    print('Epoch: {}/{}'.format(e, args.epochs),
-	    	  'Iteration: {}'.format(iteration),
-	    	  'Loss: {}'.format(cur_loss),
-	   	  'Perplexity: {}'.format(perpl),
-	          'ms/batch: {}'.format(elapsed * 1000 / 100))
-	    total_loss = 0
-	    start_time = time.time()
-	if perpl < best_ppl:
-	    print("saving best checkpoint")
-	    torch.save(net.state_dict(), os.path.join(args.checkpoint_path,'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name, perpl)))
-	    best_ppl = perpl
+            print('Epoch: {}/{}'.format(e, args.epochs),
+                  'Iteration: {}'.format(iteration),
+                  'Loss: {}'.format(cur_loss),
+                  'Perplexity: {}'.format(perpl),
+                  'ms/batch: {}'.format(elapsed * 1000 / 100))
+            total_loss = 0
+            start_time = time.time()
+        if perpl < best_ppl:
+            print("saving best checkpoint")
+            torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
+                                                      'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name,
+                                                                                                       perpl)))
+            best_ppl = perpl
 
-	losses.append(total_loss)
-	
-torch.save(model.state_dict(), os.path.join(outpath, "cbow_finished_loss_{}.pth".format(loss)))
+        losses.append(total_loss)
+
+torch.save(model.state_dict(), os.path.join(outpath, "cbow_finished_loss_{}.pth".format(total_loss)))

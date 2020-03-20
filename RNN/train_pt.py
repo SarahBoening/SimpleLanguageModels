@@ -1,4 +1,5 @@
 import sys
+
 sys.path.append('../.')
 
 import torch
@@ -13,11 +14,13 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Baseline GRU model')
 
-parser.add_argument("--train_file", type=str, default="/home/nilo4793/Documents/Thesis/BPE/java_0125_text_enc.txt" ,help="input dir of data")
+parser.add_argument("--train_file", type=str, default="/home/nilo4793/Documents/Thesis/BPE/java_0125_text_enc.txt",
+                    help="input dir of data")
 parser.add_argument("--output_name", type=str, default="lstm_BPE_Test", help="Name of the model")
 parser.add_argument("--checkpoint_path", type=str, default="./output/", help="output path for the model")
 parser.add_argument("--vocab_path", type=str, default="./vocab.txt", help="path to vocab file")
-parser.add_argument("--embedmodel_path", type=str, default="../Embedding/output/model.pth", help="path to pretrained embedding model")
+parser.add_argument("--embedmodel_path", type=str, default="../Embedding/output/model.pth",
+                    help="path to pretrained embedding model")
 parser.add_argument("--gpu_ids", type=int, default=0, help="IDs of GPUs to be used if available")
 parser.add_argument("--epochs", type=int, default=10, help="No ofs epochs")
 parser.add_argument("--seq_size", type=int, default=32, help="")
@@ -26,7 +29,8 @@ parser.add_argument("--embedding_size", type=int, default=64, help="Embedding si
 parser.add_argument("--lstm_size", type=int, default=64, help="GRU size")
 parser.add_argument("--dropout", type=float, default=0.5, help="GRU size")
 parser.add_argument("--gradient_norm", type=int, default=5, help="Gradient normalization")
-parser.add_argument("--initial_words", type=list, default=['public', 'class'], help="List of initial words to predict further")
+parser.add_argument("--initial_words", type=list, default=['public', 'class'],
+                    help="List of initial words to predict further")
 parser.add_argument("--do_predict", type=boolean, default=True, help="should network predict at the end")
 parser.add_argument("--predict_top_k", type=int, default=5, help="Top k prediction")
 
@@ -41,7 +45,8 @@ def get_data_from_file(train_file, batch_size, seq_size, tokenizer):
                 print('loading tokenized file: ', train_file)
                 text = f.read()
                 liste.append(text)
-        elif not train_file.startswith('cached') and train_file.endswith(".raw") and not os.path.isfile("tokenized_"+train_file):
+        elif not train_file.startswith('cached') and train_file.endswith(".raw") and not os.path.isfile(
+                "tokenized_" + train_file):
             print('loading and tokenizing file: ', path)
             with open(train_file, "r", encoding="utf-8", errors='replace') as f:
                 text = f.read()
@@ -59,7 +64,8 @@ def get_data_from_file(train_file, batch_size, seq_size, tokenizer):
                     text = f.read()
                     liste.append(text)
 
-            elif not file.startswith('cached') and file.endswith(".raw") and not os.path.isfile(os.path.join(train_file, "tokenized_"+file)):
+            elif not file.startswith('cached') and file.endswith(".raw") and not os.path.isfile(
+                    os.path.join(train_file, "tokenized_" + file)):
                 print('loading and tokenizing file: ', file)
 
                 with open(source, "r", encoding="utf-8", errors='replace') as f:
@@ -89,7 +95,7 @@ def get_data_from_file(train_file, batch_size, seq_size, tokenizer):
 def get_batches(in_text, out_text, batch_size, seq_size):
     num_batches = np.prod(in_text.shape) // (seq_size * batch_size)
     for i in range(0, num_batches * seq_size, seq_size):
-        yield in_text[:, i:i+seq_size], out_text[:, i:i+seq_size]
+        yield in_text[:, i:i + seq_size], out_text[:, i:i + seq_size]
 
 
 class RNNModule(nn.Module):
@@ -97,7 +103,7 @@ class RNNModule(nn.Module):
         super(RNNModule, self).__init__()
         self.seq_size = seq_size
         self.lstm_size = lstm_size
-		self.drop = nn.Dropout(dropout)
+        self.drop = nn.Dropout(dropout)
         self.encode = nn.Embedding(n_vocab, embedding_size)
         self.lstm = nn.LSTM(embedding_size,
                             lstm_size,
@@ -156,15 +162,15 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
 def evaluate(model, tokenizer, criterion):
     # TODO write evaluation
     model.eval()
-    total_loss= 0.
+    total_loss = 0.
     state_h, state_c = net.zero_state(args.batch_size)
     # get data
     with torch.no_grad():
-	# iterate over batches
-	# data = input, y = target
-	logits, (state_h, state_c) = model(data, (state_h, state_c))
-	total_loss += len(data) * criterion(logits.transpose(1, 2), y).item()
-    return total_loss / (len(data_source) -1 )
+        # iterate over batches
+        # data = input, y = target
+        logits, (state_h, state_c) = model(data, (state_h, state_c))
+        total_loss += len(data) * criterion(logits.transpose(1, 2), y).item()
+    return total_loss / (len(data_source) - 1)
 
 
 def main():
@@ -222,30 +228,34 @@ def main():
                 net.parameters(), args.gradients_norm)
 
             optimizer.step()
-			
-  	    total_loss += loss_value
-			
-            if iteration % 100 == 0 and iteration > 0:
-                cur_loss = total_loss / 100
-		perpl = math.exp(cur_loss)
-		elapsed = time.time() - start_time
-                print('Epoch: {}/{}'.format(e, args.epochs),
-                      'Iteration: {}'.format(iteration),
-                      'Loss: {}'.format(cur_loss),
-		      'Perplexity: {}'.format(perpl),
-		      'ms/batch: {}'.format(elapsed * 1000 / 100))
-		total_loss = 0
-		start_time = time.time()
-		if perpl < best_ppl:
-		    print("saving best checkpoint")
-		    torch.save(net.state_dict(), os.path.join(args.checkpoint_path, 'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name, perpl)))
-		    best_ppl = perpl
-    # save model after training
-    torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
-    print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
-	
-    if args.do_predict:
-        predict(device, net, args.initial_words, n_vocab, tokenizer, top_k=5)
-							
+
+        total_loss += loss_value
+
+        if iteration % 100 == 0 and iteration > 0:
+            cur_loss = total_loss / 100
+    perpl = math.exp(cur_loss)
+    elapsed = time.time() - start_time
+    print('Epoch: {}/{}'.format(e, args.epochs),
+          'Iteration: {}'.format(iteration),
+          'Loss: {}'.format(cur_loss),
+          'Perplexity: {}'.format(perpl),
+          'ms/batch: {}'.format(elapsed * 1000 / 100))
+
+
+total_loss = 0
+start_time = time.time()
+if perpl < best_ppl:
+    print("saving best checkpoint")
+    torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
+                                              'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name,
+                                                                                               perpl)))
+    best_ppl = perpl
+# save model after training
+torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
+print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
+
+if args.do_predict:
+    predict(device, net, args.initial_words, n_vocab, tokenizer, top_k=5)
+
 if __name__ == '__main__':
     main()

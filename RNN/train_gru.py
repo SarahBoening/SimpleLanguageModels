@@ -1,4 +1,5 @@
 import sys
+
 sys.path.append('../.')
 
 import torch
@@ -11,14 +12,14 @@ from collections import Counter
 import os
 import argparse
 
-
 parser = argparse.ArgumentParser(description='Baseline GRU model')
 
 parser.add_argument("--train_file", type=str, default="./data/trump.txt", help="input dir of data")
 parser.add_argument("--output_name", type=str, default="gru_trump", help="Name of the model")
 parser.add_argument("--checkpoint_path", type=str, default="./output/", help="output path for the model")
 parser.add_argument("--vocab_path", type=str, default="./vocab.txt", help="path to vocab file")
-parser.add_argument("--embedmodel_path", type=str, default="../Embedding/output/model.pth", help="path to pretrained embedding model")
+parser.add_argument("--embedmodel_path", type=str, default="../Embedding/output/model.pth",
+                    help="path to pretrained embedding model")
 parser.add_argument("--gpu_ids", type=int, default=0, help="IDs of GPUs to be used if available")
 parser.add_argument("--epochs", type=int, default=10, help="No ofs epochs")
 parser.add_argument("--seq_size", type=int, default=32, help="")
@@ -42,7 +43,8 @@ def get_data_from_file(train_file, batch_size, seq_size, tokenizer):
                 print('loading tokenized file: ', train_file)
                 text = f.read()
                 liste.append(text)
-        elif not train_file.startswith('cached') and train_file.endswith(".raw") and not os.path.isfile("tokenized_"+train_file):
+        elif not train_file.startswith('cached') and train_file.endswith(".raw") and not os.path.isfile(
+                "tokenized_" + train_file):
             print('loading and tokenizing file: ', path)
             with open(train_file, "r", encoding="utf-8", errors='replace') as f:
                 text = f.read()
@@ -60,7 +62,8 @@ def get_data_from_file(train_file, batch_size, seq_size, tokenizer):
                     text = f.read()
                     liste.append(text)
 
-            elif not file.startswith('cached') and file.endswith(".raw") and not os.path.isfile(os.path.join(train_file, "tokenized_"+file)):
+            elif not file.startswith('cached') and file.endswith(".raw") and not os.path.isfile(
+                    os.path.join(train_file, "tokenized_" + file)):
                 print('loading and tokenizing file: ', file)
 
                 with open(source, "r", encoding="utf-8", errors='replace') as f:
@@ -98,22 +101,25 @@ class RNNModule(nn.Module):
         super(RNNModule, self).__init__()
         self.seq_size = seq_size
         self.gru_size = gru_size
-		self.drop = nn.Dropout(dropout)
-        self.encode = nn.Embedding(n_vocab, embedding_size)
-        self.gru = nn.GRU(embedding_size,
-                          gru_size,
-                          batch_first=True)
-        self.decode = nn.Linear(gru_size, n_vocab)
+        self.drop = nn.Dropout(dropout)
 
-    def forward(self, x, prev_state):
-        embed = self.drop(self.encode(x))
-        output, state = self.gru(embed, prev_state)
-        logits = self.decode(output)
-        preds = F.log_softmax(logits, dim=1)
-        return preds, state
+    self.encode = nn.Embedding(n_vocab, embedding_size)
+    self.gru = nn.GRU(embedding_size,
+                      gru_size,
+                      batch_first=True)
+    self.decode = nn.Linear(gru_size, n_vocab)
 
-    def zero_state(self, batch_size):
-        return torch.zeros(1, batch_size, self.gru_size)
+
+def forward(self, x, prev_state):
+    embed = self.drop(self.encode(x))
+    output, state = self.gru(embed, prev_state)
+    logits = self.decode(output)
+    preds = F.log_softmax(logits, dim=1)
+    return preds, state
+
+
+def zero_state(self, batch_size):
+    return torch.zeros(1, batch_size, self.gru_size)
 
 
 def get_loss_and_train_op(net, lr=0.001):
@@ -156,15 +162,15 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
 def evaluate(model, tokenizer, criterion):
     # TODO write evaluation
     model.eval()
-    total_loss= 0.
+    total_loss = 0.
     state_h = net.zero_state(args.batch_size)
     # get data
     with torch.no_grad():
         # iterate over batches
-	# data = input, y = target
-	logits, state_h = model(data, state_h)
-	total_loss += len(data) * criterion(logits.transpose(1, 2), y).item()
-    return total_loss / (len(data_source) -1 )
+        # data = input, y = target
+        logits, state_h = model(data, state_h)
+        total_loss += len(data) * criterion(logits.transpose(1, 2), y).item()
+    return total_loss / (len(data_source) - 1)
 
 
 def main():
@@ -217,25 +223,26 @@ def main():
                 net.parameters(), args.gradients_norm)
 
             optimizer.step()
-			
+
             total_loss += loss_value
-			
+
             if iteration % 100 == 0 and iteration > 0:
-	        cur_loss = total_loss / 100
-		perpl = math.exp(cur_loss)
-		elapsed = time.time() - start_time
+                cur_loss = total_loss / 100
+                perpl = math.exp(cur_loss)
+                elapsed = time.time() - start_time
                 print('Epoch: {}/{}'.format(e, args.epochs),
                       'Iteration: {}'.format(iteration),
                       'Loss: {}'.format(cur_loss),
-		      'Perplexity: {}'.format(perpl),
-		      'ms/batch: {}'.format(elapsed * 1000 / 100))
-		total_loss = 0
-		start_time = time.time()
-		if perpl < best_ppl:
-		    print("saving best checkpoint")
-		    torch.save(net.state_dict(), os.path.join(args.checkpoint_path, 'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name, perpl)))
-		    best_ppl = perpl					
-				
+                      'Perplexity: {}'.format(perpl),
+                      'ms/batch: {}'.format(elapsed * 1000 / 100))
+                total_loss = 0
+                start_time = time.time()
+                if perpl < best_ppl:
+                    print("saving best checkpoint")
+                    torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
+                                                              'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
+                                                                  args.output_name, perpl)))
+                    best_ppl = perpl
 
             if iteration % 1000 == 0:
                 torch.save(net.state_dict(),
