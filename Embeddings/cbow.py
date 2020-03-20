@@ -25,16 +25,6 @@ class CBOW(nn.Module):
         return log_probs
 
 
-# create your model and train.  here are some functions to help you make
-# the data ready for use by your module
-
-
-def make_context_vector(context, word_to_ix):
-    idxs = [word_to_ix[w] for w in context]
-    tensor = torch.LongTensor(idxs)
-    return Variable(tensor)
-
-
 def load_text(path, tokenizer):
     ''' loads all .raw files from path'''
     print("loading files...")
@@ -115,10 +105,12 @@ print("starting training")
 # 10 epoch
 oldloss = 10000000
 epochs = 100
+iteration = 0
 for epoch in range(epochs):
     print("Epoch ", epoch, "/ ", epochs)
     total_loss = torch.FloatTensor([0])
     for context, target in data:
+		iteration += 1
         model.train()
         context_idxs = [tokenizer.convert_tokens_to_ids(w) for w in context]
         target_idx = tokenizer.convert_tokens_to_ids(target)
@@ -131,10 +123,25 @@ for epoch in range(epochs):
         loss.backward()
         optimizer.step()
 
-        total_loss += loss.data
+        total_loss += loss.item()
 
-    losses.append(total_loss)
-    if loss < oldloss:
-        torch.save(model.state_dict(), os.path.join(outpath, "cbow_bestcp_loss_{}.pth".format(loss)))
-    oldloss = loss
+		if iteration % 100 == 0 and iteration > 0:
+					cur_loss = total_loss / 100
+					perpl = math.exp(cur_loss)
+					elapsed = time.time() - start_time
+					print('Epoch: {}/{}'.format(e, args.epochs),
+						  'Iteration: {}'.format(iteration),
+						  'Loss: {}'.format(cur_loss),
+						  'Perplexity: {}'.format(perpl),
+						   'ms/batch: {}'.format(elapsed * 1000 / 100))
+					total_loss = 0
+					start_time = time.time()
+					if perpl < best_ppl:
+						print("saving best checkpoint")
+						torch.save(net.state_dict(),
+							   os.path.join(args.checkpoint_path,
+											'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name, perpl)))
+						best_ppl = perpl
+	losses.append(total_loss)
+	
 torch.save(model.state_dict(), os.path.join(outpath, "cbow_finished_loss_{}.pth".format(loss)))

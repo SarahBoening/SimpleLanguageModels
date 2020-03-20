@@ -88,7 +88,11 @@ def predict(model, is_count, text, max_len):
 
     print(' '.join([t for t in text if t]))
 
-
+def evaluate(model):
+    #TODO
+    pass
+	
+	
 def model_ngram(n, data):
     print("modeling ngram ...")
     print(len(data))
