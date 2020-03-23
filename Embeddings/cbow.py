@@ -1,4 +1,5 @@
 import sys
+from datetime import time
 
 sys.path.append('../.')
 
@@ -8,7 +9,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import Tokenizer.tokenizer as tok
+import tokenizer as tok
 from itertools import chain
 import math
 
@@ -40,11 +41,11 @@ def load_text(path, tokenizer):
         elif not path.startswith('cached') and path.endswith(".raw") and not os.path.isfile("tokenized_" + path):
             print('loading and tokenizing file: ', path)
             with open(path, "r", encoding="utf-8", errors='replace') as f:
-                text = f.read()
-                list.append(tokenizer._tokenize(text))
+                text = tokenizer._tokenize(f.read())
+                list.append(text)
                 dest = "tokenized_" + path
                 with open(dest, "w", encoding="utf-8", errors="replace")as f:
-                    f.writelines(' '.join(str(j) for j in i) + '\n' for i in list)
+                    f.write(' '.join(text))
     else:
         files = os.listdir(path)
         for file in files:
@@ -52,7 +53,7 @@ def load_text(path, tokenizer):
             if file.startswith("tokenized_"):
                 with(open(source, "r", encoding="utf-8", errors="replace")) as f:
                     print('loading tokenized file: ', file)
-                    text = f.read()
+                    text = f.read().split()
                     list.append(text)
 
             elif not file.startswith('cached') and file.endswith(".raw") and not os.path.isfile(
@@ -60,28 +61,30 @@ def load_text(path, tokenizer):
                 print('loading and tokenizing file: ', file)
 
                 with open(source, "r", encoding="utf-8", errors='replace') as f:
-                    text = f.read()
-                    list.append(tokenizer._tokenize(text))
+                    text = tokenizer._tokenize(f.read())
+                    list.append(text)
                     dest = os.path.join(path, "tokenized_" + file)
                     with open(dest, "w", encoding="utf-8", errors="replace")as f:
-                        f.writelines(' '.join(str(j) for j in i) + '\n' for i in list)
+                        f.write(' '.join(text))
     print("done")
     return list
 
 
 torch.manual_seed(1)
 
-# path = "0000.java_github_5k.raw"
+# path = "G:\\MASTER\\raw_files\\Java\\small\\train\\"
 path = "/home/nilo4793/raid/corpora/Java/small/train/"
 outpath = "/home/nilo4793/raid/output/embedding/javasmall/"
-# outpath = "G:\\MASTER\\outputs\\embeddings\\"
+#outpath = "G:\\MASTER\\outputs\\embeddings\\"
 
-# vocab_path = "vocab_small.txt"
+#vocab_path = "vocab_small.txt"
 vocab_path = "/home/nilo4793/raid/corpora/Java/small/vocab_nltk.txt"
+
 CONTEXT_SIZE = 2  # 2 words to the left, 2 to the right
 tokenizer = tok.Tokenizer(vocab_path, "java")
 
-raw_text = list(chain.from_iterable(load_text(path, tokenizer)))
+raw_text = load_text(path, tokenizer)
+raw_text = list(chain.from_iterable(raw_text))
 
 # By deriving a set from `raw_text`, we deduplicate the array
 vocab_size = tokenizer.get_vocab_len()
@@ -133,7 +136,7 @@ for epoch in range(epochs):
             cur_loss = total_loss / 100.
             perpl = math.exp(cur_loss)
             elapsed = time.time() - start_time
-            print('Epoch: {}/{}'.format(e, args.epochs),
+            print('Epoch: {}/{}'.format(epoch, epochs),
                   'Iteration: {}'.format(iteration),
                   'Loss: {}'.format(cur_loss),
                   'Perplexity: {}'.format(perpl),
@@ -142,8 +145,8 @@ for epoch in range(epochs):
             start_time = time.time()
         if perpl < best_ppl:
             print("saving best checkpoint")
-            torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
-                                                      'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name,
+            torch.save(model.state_dict(), os.path.join(outpath,
+                                                      'checkpoint_pt/best_checkpoint-{}-{}.pth'.format("cbow",
                                                                                                        perpl)))
             best_ppl = perpl
 
