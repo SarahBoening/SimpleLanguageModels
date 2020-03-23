@@ -73,17 +73,18 @@ def load_text(path, tokenizer):
 torch.manual_seed(1)
 
 # path = "G:\\MASTER\\raw_files\\Java\\small\\train\\"
-path = "/home/nilo4793/raid/corpora/Java/small/train/"
-outpath = "/home/nilo4793/raid/output/embedding/javasmall/"
+path = "/home/nilo4793/Documents/Thesis/corpora/AST/small/train/"
+outpath = "/home/nilo4793/Documents/Thesis/output/embedding/javasmall/"
 #outpath = "G:\\MASTER\\outputs\\embeddings\\"
 
 #vocab_path = "vocab_small.txt"
-vocab_path = "/home/nilo4793/raid/corpora/Java/small/vocab_nltk.txt"
+vocab_path = "/home/nilo4793/Documents/Thesis/corpora/AST/small/vocab.txt"
 
 CONTEXT_SIZE = 2  # 2 words to the left, 2 to the right
 tokenizer = tok.Tokenizer(vocab_path, "java")
 
 raw_text = load_text(path, tokenizer)
+'''
 raw_text = list(chain.from_iterable(raw_text))
 
 # By deriving a set from `raw_text`, we deduplicate the array
@@ -155,3 +156,4 @@ for epoch in range(epochs):
         losses.append(total_loss)
 
 torch.save(model.state_dict(), os.path.join(outpath, "cbow_finished_loss_{}.pth".format(total_loss)))
+'''
