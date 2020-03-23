@@ -1,5 +1,5 @@
 import sys
-from datetime import time
+import datetime
 
 sys.path.append('../.')
 
@@ -9,7 +9,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import tokenizer as tok
+import Tokenizer.tokenizer as tok
 from itertools import chain
 import math
 
@@ -111,8 +111,10 @@ print("starting training")
 best_ppl = 100000
 perpl = 100000
 oldloss = 10000000
-epochs = 100
+epochs = 20
 iteration = 0
+log_step = 300
+start_time = datetime.datetime.now()
 for epoch in range(epochs):
     print("Epoch ", epoch, "/ ", epochs)
     total_loss = torch.FloatTensor([0])
@@ -132,17 +134,17 @@ for epoch in range(epochs):
 
         total_loss += loss.item()
 
-        if iteration % 100 == 0 and iteration > 0:
+        if iteration % log_step == 0 and iteration > 0:
             cur_loss = total_loss / 100.
             perpl = math.exp(cur_loss)
-            elapsed = time.time() - start_time
+            elapsed = datetime.datetime.now() - start_time
             print('Epoch: {}/{}'.format(epoch, epochs),
                   'Iteration: {}'.format(iteration),
                   'Loss: {}'.format(cur_loss),
                   'Perplexity: {}'.format(perpl),
                   'ms/batch: {}'.format(elapsed * 1000 / 100))
             total_loss = 0
-            start_time = time.time()
+            start_time = datetime.datetime.now()
         if perpl < best_ppl:
             print("saving best checkpoint")
             torch.save(model.state_dict(), os.path.join(outpath,
