@@ -101,7 +101,7 @@ losses = []
 loss_function = nn.NLLLoss()
 model = CBOW(vocab_size, embedding_dim=64)
 optimizer = optim.SGD(model.parameters(), lr=0.001)
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:7' if torch.cuda.is_available() else 'cpu')
 model = model.to(device)
 print("starting training")
 # 10 epoch
@@ -118,8 +118,8 @@ for epoch in range(epochs):
         model.train()
         context_idxs = [tokenizer.convert_tokens_to_ids(w) for w in context]
         target_idx = tokenizer.convert_tokens_to_ids(target)
-        context_var = Variable(torch.LongTensor(context_idxs))
-        target_var = Variable(torch.LongTensor([target_idx]))
+        context_var = Variable(torch.LongTensor(context_idxs)).to(device)
+        target_var = Variable(torch.LongTensor([target_idx])).to(device)
         model.zero_grad()
         log_probs = model(context_var)
         winner = tokenizer._convert_id_to_token(torch.argmax(log_probs[0]).item())
