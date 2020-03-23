@@ -113,7 +113,7 @@ perpl = 100000
 oldloss = 10000000
 epochs = 20
 iteration = 0
-log_step = 300
+log_step = 100
 start_time = datetime.datetime.now()
 for epoch in range(epochs):
     print("Epoch ", epoch, "/ ", epochs)
