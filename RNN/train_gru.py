@@ -11,6 +11,8 @@ import math
 from collections import Counter
 import os
 import argparse
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 parser = argparse.ArgumentParser(description='Baseline GRU model')
 
@@ -197,6 +199,8 @@ def main():
     iteration = 0
     total_loss = 0.
     start_time = datetime.datetime.now()
+    plot_every = 500
+    all_losses = []
     for e in range(args.epochs):
         batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
         state_h = net.zero_state(args.batch_size)
@@ -243,6 +247,9 @@ def main():
                                                               'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
                                                                   args.output_name, perpl)))
                     best_ppl = perpl
+            if iteration % plot_every == 0:
+                all_losses.append(total_loss / plot_every)
+                total_loss = 0
 
             if iteration % 1000 == 0:
                 torch.save(net.state_dict(),
@@ -251,6 +258,11 @@ def main():
     # save model after training
     torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
     print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
+
+    plt.figure()
+    plt.plot(all_losses)
+    plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot.png'))
+
     if args.do_predict:
         predict(device, net, args.initial_words, n_vocab, tokenizer, top_k=5)
 

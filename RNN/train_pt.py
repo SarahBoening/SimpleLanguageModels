@@ -11,6 +11,8 @@ import math
 from collections import Counter
 import os
 import argparse
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 parser = argparse.ArgumentParser(description='Baseline GRU model')
 
@@ -200,6 +202,8 @@ def main():
     total_loss = 0.
     start_time = time.time()
     best_ppl = 10000
+    plot_every = 500
+    all_losses = []
     for e in range(args.epochs):
         batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
         state_h, state_c = net.zero_state(args.batch_size)
@@ -233,26 +237,33 @@ def main():
 
         if iteration % 100 == 0 and iteration > 0:
             cur_loss = total_loss / 100
-    perpl = math.exp(cur_loss)
-    elapsed = time.time() - start_time
-    print('Epoch: {}/{}'.format(e, args.epochs),
-          'Iteration: {}'.format(iteration),
-          'Loss: {}'.format(cur_loss),
-          'Perplexity: {}'.format(perpl),
-          'ms/batch: {}'.format(elapsed * 1000 / 100))
+            perpl = math.exp(cur_loss)
+            elapsed = time.time() - start_time
+            print('Epoch: {}/{}'.format(e, args.epochs),
+                  'Iteration: {}'.format(iteration),
+                  'Loss: {}'.format(cur_loss),
+                  'Perplexity: {}'.format(perpl),
+                  'ms/batch: {}'.format(elapsed * 1000 / 100))
+            total_loss = 0
+            start_time = time.time()
+            if perpl < best_ppl:
+                print("saving best checkpoint")
+                torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
+                                                          'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name,
+                                                                                                           perpl)))
+                best_ppl = perpl
 
+            if iteration % plot_every == 0:
+                all_losses.append(total_loss / plot_every)
+                total_loss = 0
 
-total_loss = 0
-start_time = time.time()
-if perpl < best_ppl:
-    print("saving best checkpoint")
-    torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
-                                              'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name,
-                                                                                               perpl)))
-    best_ppl = perpl
 # save model after training
 torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
 print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
+
+plt.figure()
+plt.plot(all_losses)
+plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot.png'))
 
 if args.do_predict:
     predict(device, net, args.initial_words, n_vocab, tokenizer, top_k=5)
