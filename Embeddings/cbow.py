@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import Tokenizer.tokenizer as tok
 from itertools import chain
-
+import math
 
 class CBOW(nn.Module):
     def __init__(self, vocab_size, embedding_dim):
