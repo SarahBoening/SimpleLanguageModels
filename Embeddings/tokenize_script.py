@@ -9,7 +9,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import tokenizer as tok
+import Tokenizer.tokenizer as tok
 from itertools import chain
 import math
 
