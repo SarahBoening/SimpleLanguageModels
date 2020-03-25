@@ -86,6 +86,7 @@ CONTEXT_SIZE = 2  # 2 words to the left, 2 to the right
 tokenizer = tok.Tokenizer(vocab_path, "java")
 
 raw_text = load_text(path, tokenizer)
+'''
 raw_text = list(chain.from_iterable(raw_text))
 
 # By deriving a set from `raw_text`, we deduplicate the array
@@ -160,3 +161,4 @@ for epoch in range(epochs):
         losses.append(total_loss)
 
 torch.save(model.state_dict(), os.path.join(outpath, "cbow_finished_loss_{}.pth".format(total_loss)))
+'''
