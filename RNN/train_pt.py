@@ -1,7 +1,7 @@
 import sys
 
 sys.path.append('../.')
-
+import datetime
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,6 +11,8 @@ import math
 from collections import Counter
 import os
 import argparse
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 parser = argparse.ArgumentParser(description='Baseline GRU model')
 
@@ -38,42 +40,41 @@ parser.add_argument("--predict_top_k", type=int, default=5, help="Top k predicti
 def get_data_from_file(train_file, batch_size, seq_size, tokenizer):
     print("loading files...")
     text = ""
-    liste = []
-    if os.path.isfile(train_file):
+    list = []
+    if os.path.isfile(path):
         if path.startswith("tokenized_"):
-            with(open(train_file, "r", encoding="utf-8", errors="replace")) as f:
-                print('loading tokenized file: ', train_file)
+            with(open(path, "r", encoding="utf-8", errors="replace")) as f:
+                print('loading tokenized file: ', path)
                 text = f.read()
-                liste.append(text)
-        elif not train_file.startswith('cached') and train_file.endswith(".raw") and not os.path.isfile(
-                "tokenized_" + train_file):
+                list.append(text)
+        elif not path.startswith('cached') and path.endswith(".raw") and not os.path.isfile("tokenized_" + path):
             print('loading and tokenizing file: ', path)
-            with open(train_file, "r", encoding="utf-8", errors='replace') as f:
-                text = f.read()
-                liste.append(tokenizer._tokenize(text))
-                dest = "tokenized_" + train_file
+            with open(path, "r", encoding="utf-8", errors='replace') as f:
+                text = tokenizer._tokenize(f.read())
+                list.append(text)
+                dest = "tokenized_" + path
                 with open(dest, "w", encoding="utf-8", errors="replace")as f:
-                    f.writelines(' '.join(str(j) for j in i) + '\n' for i in list)
+                    f.write(' '.join(text))
     else:
-        files = os.listdir(train_file)
+        files = os.listdir(path)
         for file in files:
-            source = os.path.join(train_file, file)
+            source = os.path.join(path, file)
             if file.startswith("tokenized_"):
                 with(open(source, "r", encoding="utf-8", errors="replace")) as f:
                     print('loading tokenized file: ', file)
-                    text = f.read()
-                    liste.append(text)
+                    text = f.read().split()
+                    list.append(text)
 
             elif not file.startswith('cached') and file.endswith(".raw") and not os.path.isfile(
-                    os.path.join(train_file, "tokenized_" + file)):
+                    os.path.join(path, "tokenized_" + file)):
                 print('loading and tokenizing file: ', file)
 
                 with open(source, "r", encoding="utf-8", errors='replace') as f:
-                    text = f.read()
-                    liste.append(tokenizer._tokenize(text))
+                    text = tokenizer._tokenize(f.read())
+                    list.append(text)
                     dest = os.path.join(path, "tokenized_" + file)
                     with open(dest, "w", encoding="utf-8", errors="replace")as f:
-                        f.writelines(' '.join(str(j) for j in i) + '\n' for i in list)
+                        f.write(' '.join(text))
     print("done")
 
     n_vocab = tokenizer.get_vocab_len()
@@ -178,7 +179,8 @@ def main():
 
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_ids
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    dev = 'cuda:' + str(args.gpu_ids)
+    device = torch.device(dev if torch.cuda.is_available() else 'cpu')
 
     tokenizer = tok.Tokenizer(args.vocab_path, "java")
 
@@ -200,6 +202,8 @@ def main():
     total_loss = 0.
     start_time = time.time()
     best_ppl = 10000
+    plot_every = 500
+    all_losses = []
     for e in range(args.epochs):
         batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
         state_h, state_c = net.zero_state(args.batch_size)
@@ -233,26 +237,33 @@ def main():
 
         if iteration % 100 == 0 and iteration > 0:
             cur_loss = total_loss / 100
-    perpl = math.exp(cur_loss)
-    elapsed = time.time() - start_time
-    print('Epoch: {}/{}'.format(e, args.epochs),
-          'Iteration: {}'.format(iteration),
-          'Loss: {}'.format(cur_loss),
-          'Perplexity: {}'.format(perpl),
-          'ms/batch: {}'.format(elapsed * 1000 / 100))
+            perpl = math.exp(cur_loss)
+            elapsed = time.time() - start_time
+            print('Epoch: {}/{}'.format(e, args.epochs),
+                  'Iteration: {}'.format(iteration),
+                  'Loss: {}'.format(cur_loss),
+                  'Perplexity: {}'.format(perpl),
+                  'ms/batch: {}'.format(elapsed * 1000 / 100))
+            total_loss = 0
+            start_time = time.time()
+            if perpl < best_ppl:
+                print("saving best checkpoint")
+                torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
+                                                          'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name,
+                                                                                                           perpl)))
+                best_ppl = perpl
 
+            if iteration % plot_every == 0:
+                all_losses.append(total_loss / plot_every)
+                total_loss = 0
 
-total_loss = 0
-start_time = time.time()
-if perpl < best_ppl:
-    print("saving best checkpoint")
-    torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
-                                              'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name,
-                                                                                               perpl)))
-    best_ppl = perpl
 # save model after training
 torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
 print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
+
+plt.figure()
+plt.plot(all_losses)
+plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot.png'))
 
 if args.do_predict:
     predict(device, net, args.initial_words, n_vocab, tokenizer, top_k=5)
