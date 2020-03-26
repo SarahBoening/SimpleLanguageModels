@@ -11,10 +11,14 @@ def load_vocab(vocab_file):
     """Loads a vocabulary file into a dictionary."""
     vocab = collections.OrderedDict()
     with open(vocab_file, "r", encoding="utf-8") as reader:
-        tokens = reader.readlines()
+        tokens = reader.read()
+    tokens = tokens.split("\n")
+    i = 0
     for index, token in enumerate(tokens):
-        token = token.rstrip('\n')
-        vocab[token] = index
+        #token = token.rstrip('\n')
+        if token not in vocab:
+            vocab[token] = i
+            i += 1
     return vocab
 
 
