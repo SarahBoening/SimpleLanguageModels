@@ -73,18 +73,18 @@ def load_text(path, tokenizer):
 torch.manual_seed(1)
 
 # path = "G:\\MASTER\\raw_files\\Java\\small\\train\\"
-path = "/home/nilo4793/Documents/Thesis/corpora/AST/small/train/"
-outpath = "/home/nilo4793/Documents/Thesis/output/embedding/javasmall/"
+# path = "/home/nilo4793/Documents/Thesis/corpora/AST/small/train/"
+path = "/home/nilo4793/raid/corpora/AST/small/train/"
+outpath = "/home/nilo4793/raid/output/embedding/ast_small/"
 #outpath = "G:\\MASTER\\outputs\\embeddings\\"
 
 #vocab_path = "vocab_small.txt"
-vocab_path = "/home/nilo4793/Documents/Thesis/corpora/AST/small/vocab.txt"
+vocab_path = "/home/nilo4793/raid/corpora/AST/small/vocab.txt"
 
 CONTEXT_SIZE = 2  # 2 words to the left, 2 to the right
 tokenizer = tok.Tokenizer(vocab_path, "java")
 
 raw_text = load_text(path, tokenizer)
-'''
 raw_text = list(chain.from_iterable(raw_text))
 
 # By deriving a set from `raw_text`, we deduplicate the array
@@ -105,7 +105,8 @@ losses = []
 loss_function = nn.NLLLoss()
 model = CBOW(vocab_size, embedding_dim=64)
 optimizer = optim.SGD(model.parameters(), lr=0.001)
-device = torch.device('cuda:7' if torch.cuda.is_available() else 'cpu')
+#device = torch.device('cuda:7' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cpu')
 model = model.to(device)
 print("starting training")
 # 10 epoch
@@ -114,7 +115,7 @@ perpl = 100000
 oldloss = 10000000
 epochs = 20
 iteration = 0
-log_step = 100
+log_step = 300
 start_time = datetime.datetime.now()
 for epoch in range(epochs):
     print("Epoch ", epoch, "/ ", epochs)
@@ -156,4 +157,3 @@ for epoch in range(epochs):
         losses.append(total_loss)
 
 torch.save(model.state_dict(), os.path.join(outpath, "cbow_finished_loss_{}.pth".format(total_loss)))
-'''

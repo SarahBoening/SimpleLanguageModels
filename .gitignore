@@ -5,3 +5,4 @@ RNN/vtest
 RNN/__pycache__
 Embeddings/output
 Tokenizer/__pycache__
+Embeddings/__pycache__
