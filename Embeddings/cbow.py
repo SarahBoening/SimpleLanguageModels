@@ -113,7 +113,7 @@ print("starting training")
 best_ppl = 100000
 perpl = 100000
 oldloss = 10000000
-epochs = 20
+epochs = 10
 iteration = 0
 log_step = 300
 start_time = datetime.datetime.now()
@@ -125,8 +125,8 @@ for epoch in range(epochs):
         model.train()
         context_idxs = [tokenizer.convert_tokens_to_ids(w) for w in context]
         target_idx = tokenizer.convert_tokens_to_ids(target)
-        context_var = Variable(torch.LongTensor(context_idxs)).to(device)
-        target_var = Variable(torch.LongTensor([target_idx])).to(device)
+        context_var = torch.tensor(context_idxs, dtype=torch.long).to(device)
+        target_var = torch.tensor([context_var], dtype=torch.long).to(device)
         model.zero_grad()
         log_probs = model(context_var)
         winner = tokenizer._convert_id_to_token(torch.argmax(log_probs[0]).item())
@@ -135,6 +135,10 @@ for epoch in range(epochs):
         optimizer.step()
 
         total_loss += loss.item()
+
+        # resert perplexity to find good checkpoints later on
+        if iteration % 5000 == 0 and iteration > 0:
+            best_ppl = 5.0
 
         if iteration % log_step == 0 and iteration > 0:
             cur_loss = total_loss / 100.
