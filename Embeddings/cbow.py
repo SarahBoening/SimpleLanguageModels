@@ -36,7 +36,7 @@ def load_text(path, tokenizer):
         if path.startswith("tokenized_"):
             with(open(path, "r", encoding="utf-8", errors="replace")) as f:
                 print('loading tokenized file: ', path)
-                text = f.read()
+                text = f.read().split()
                 list.append(text)
         elif not path.startswith('cached') and path.endswith(".raw") and not os.path.isfile("tokenized_" + path):
             print('loading and tokenizing file: ', path)
@@ -72,9 +72,8 @@ def load_text(path, tokenizer):
 
 torch.manual_seed(1)
 
-# CHANGE GPU ID 
-
 # path = "G:\\MASTER\\raw_files\\Java\\small\\train\\"
+# path = "/home/nilo4793/Documents/Thesis/corpora/AST/small/train/"
 path = "/home/nilo4793/raid/corpora/AST/small/train/"
 outpath = "/home/nilo4793/raid/output/embedding/ast_small/"
 #outpath = "G:\\MASTER\\outputs\\embeddings\\"
@@ -86,12 +85,10 @@ CONTEXT_SIZE = 2  # 2 words to the left, 2 to the right
 tokenizer = tok.Tokenizer(vocab_path, "java")
 
 raw_text = load_text(path, tokenizer)
-'''
 raw_text = list(chain.from_iterable(raw_text))
 
 # By deriving a set from `raw_text`, we deduplicate the array
 vocab_size = tokenizer.get_vocab_len()
-print(vocab_size)
 print("building context vectors")
 data = []
 for i in range(2, len(raw_text) - 2):
@@ -105,19 +102,20 @@ print(data[:5])
 
 # loss model optimizer
 losses = []
-loss_function = nn.CrossEntropyLoss()
+loss_function = nn.NLLLoss()
 model = CBOW(vocab_size, embedding_dim=64)
 optimizer = optim.SGD(model.parameters(), lr=0.001)
-device = torch.device('cuda:6' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:7' if torch.cuda.is_available() else 'cpu')
+#device = torch.device('cpu')
 model = model.to(device)
 print("starting training")
 # 10 epoch
-best_ppl = 100000
-perpl = 100000
+best_ppl = 10
+perpl = 10
 oldloss = 10000000
-epochs = 20
+epochs = 10
 iteration = 0
-log_step = 100
+log_step = 300.
 start_time = datetime.datetime.now()
 for epoch in range(epochs):
     print("Epoch ", epoch, "/ ", epochs)
@@ -126,39 +124,42 @@ for epoch in range(epochs):
         iteration += 1
         model.train()
         context_idxs = [tokenizer.convert_tokens_to_ids(w) for w in context]
+        #print(context_idxs)
         target_idx = tokenizer.convert_tokens_to_ids(target)
-        print(target_idx)
-        context_var = Variable(torch.LongTensor(context_idxs)).to(device)
-        target_var = Variable(torch.LongTensor([target_idx])).to(device)
+        context_var = torch.tensor(context_idxs, dtype=torch.long).to(device)
+        target_var = torch.tensor([target_idx], dtype=torch.long).to(device)
         model.zero_grad()
         log_probs = model(context_var)
-        print(log_probs)
-        #winner = tokenizer._convert_id_to_token(torch.argmax(log_probs[0]).item())
+        winner = tokenizer._convert_id_to_token(torch.argmax(log_probs[0]).item())
         loss = loss_function(log_probs, target_var)
         loss.backward()
         optimizer.step()
 
         total_loss += loss.item()
 
+        # resert perplexity to find good checkpoints later on
+        if iteration % 50000 == 0 and iteration > 0:
+            best_ppl = 3.0
+
         if iteration % log_step == 0 and iteration > 0:
-            cur_loss = total_loss / 100.
+            cur_loss = total_loss / log_step
             perpl = math.exp(cur_loss)
             elapsed = datetime.datetime.now() - start_time
             print('Epoch: {}/{}'.format(epoch, epochs),
                   'Iteration: {}'.format(iteration),
                   'Loss: {}'.format(cur_loss),
                   'Perplexity: {}'.format(perpl),
-                  'ms/batch: {}'.format(elapsed * 1000 / 100))
+                  'ms/batch: {}'.format(elapsed * 1000 / log_step))
             total_loss = 0
             start_time = datetime.datetime.now()
-        if perpl < best_ppl:
+        losses.append(total_loss)
+
+       if perpl < best_ppl:
             print("saving best checkpoint")
             torch.save(model.state_dict(), os.path.join(outpath,
                                                       'checkpoint_pt/best_checkpoint-{}-{}.pth'.format("cbow",
-                                                                                                       perpl)))
+                                                                                                           perpl)))
             best_ppl = perpl
 
-        losses.append(total_loss)
 
 torch.save(model.state_dict(), os.path.join(outpath, "cbow_finished_loss_{}.pth".format(total_loss)))
-'''
