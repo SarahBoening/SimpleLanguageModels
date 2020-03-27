@@ -73,12 +73,12 @@ def load_text(path, tokenizer):
 torch.manual_seed(1)
 
 #path = "G:\\MASTER\\raw_files\\AST\\small\\eval\\"
-path = "/home/nilo4793/Documents/Thesis/corpora/AST/small/train/"
+path = "/home/nilo4793/media/Split_Corpus/smaller/small/train/"
 outpath = "/home/nilo4793/Documents/Thesis/output/embedding/javasmall/"
 #outpath = "G:\\MASTER\\outputs\\embeddings\\"
 
 #vocab_path = "G:\\MASTER\\raw_files\\AST\\small\\vocab.txt"
-vocab_path = "/home/nilo4793/Documents/Thesis/corpora/AST/small/vocab.txt"
+vocab_path = "/home/nilo4793/media/Split_Corpus/smaller/small/vocab_nltk.txt"
 
 CONTEXT_SIZE = 2  # 2 words to the left, 2 to the right
 tokenizer = tok.Tokenizer(vocab_path, "java")
