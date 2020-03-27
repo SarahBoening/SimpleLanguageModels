@@ -36,7 +36,7 @@ def load_text(path):
             if file.startswith("tokenized_"):
                 with(open(source, "r", encoding="utf-8", errors="replace")) as f:
                     print('loading tokenized file: ', file)
-                    text += f.read().split()
+                    text += ' '.join(f.read().split())
                     #list.append(text)
 
             elif not file.startswith('cached') and file.endswith(".raw") and not os.path.isfile(
@@ -57,7 +57,7 @@ def save_ngram(model, output_path, n, corpus_name):
     ''' save model '''
     print('saving')
     file = os.path.join(output_path, "model_{}_{}.csv".format(n, corpus_name))
-    with open(file, 'w', encoding='UTF-8', errors='replace', newline='') as csv_file:
+    with open(file, 'w+', encoding='UTF-8', errors='replace', newline='') as csv_file:
         csvwriter = csv.writer(csv_file, delimiter='\t')
         for w1_w2 in model:
             for w3 in model[w1_w2]:
@@ -142,7 +142,7 @@ if __name__ == "__main__":
 
     if load_data:
         if data_path:
-            data = load_data(data_path)
+            data = load_text(data_path)
         else:
             data = nltk.corpus.gutenberg.sents('austen-emma.txt')
 
