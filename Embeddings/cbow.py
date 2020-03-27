@@ -105,13 +105,13 @@ losses = []
 loss_function = nn.NLLLoss()
 model = CBOW(vocab_size, embedding_dim=64)
 optimizer = optim.SGD(model.parameters(), lr=0.001)
-#device = torch.device('cuda:7' if torch.cuda.is_available() else 'cpu')
-device = torch.device('cpu')
+device = torch.device('cuda:7' if torch.cuda.is_available() else 'cpu')
+#device = torch.device('cpu')
 model = model.to(device)
 print("starting training")
 # 10 epoch
-best_ppl = 100000
-perpl = 100000
+best_ppl = 10
+perpl = 10
 oldloss = 10000000
 epochs = 10
 iteration = 0
@@ -124,9 +124,10 @@ for epoch in range(epochs):
         iteration += 1
         model.train()
         context_idxs = [tokenizer.convert_tokens_to_ids(w) for w in context]
+        #print(context_idxs)
         target_idx = tokenizer.convert_tokens_to_ids(target)
         context_var = torch.tensor(context_idxs, dtype=torch.long).to(device)
-        target_var = torch.tensor([context_var], dtype=torch.long).to(device)
+        target_var = torch.tensor([target_idx], dtype=torch.long).to(device)
         model.zero_grad()
         log_probs = model(context_var)
         winner = tokenizer._convert_id_to_token(torch.argmax(log_probs[0]).item())
@@ -137,8 +138,8 @@ for epoch in range(epochs):
         total_loss += loss.item()
 
         # resert perplexity to find good checkpoints later on
-        if iteration % 5000 == 0 and iteration > 0:
-            best_ppl = 5.0
+        if iteration % 50000 == 0 and iteration > 0:
+            best_ppl = 3.0
 
         if iteration % log_step == 0 and iteration > 0:
             cur_loss = total_loss / 100.
@@ -151,13 +152,14 @@ for epoch in range(epochs):
                   'ms/batch: {}'.format(elapsed * 1000 / 100))
             total_loss = 0
             start_time = datetime.datetime.now()
-        if perpl < best_ppl:
+        losses.append(total_loss)
+
+       if perpl < best_ppl:
             print("saving best checkpoint")
             torch.save(model.state_dict(), os.path.join(outpath,
                                                       'checkpoint_pt/best_checkpoint-{}-{}.pth'.format("cbow",
-                                                                                                       perpl)))
+                                                                                                           perpl)))
             best_ppl = perpl
 
-        losses.append(total_loss)
 
 torch.save(model.state_dict(), os.path.join(outpath, "cbow_finished_loss_{}.pth".format(total_loss)))
