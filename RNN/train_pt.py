@@ -202,7 +202,7 @@ def main():
     total_loss = 0.
     start_time = time.time()
     best_ppl = 10
-	perpl = 10
+    perpl = 10
     plot_every = 25000
     all_losses = []
     for e in range(args.epochs):
@@ -237,14 +237,14 @@ def main():
         total_loss += loss_value
 
         if iteration % 1000 == 0 and iteration > 0:
-            cur_loss = total_loss / 100
+            cur_loss = total_loss / 1000
             perpl = math.exp(cur_loss)
             elapsed = time.time() - start_time
             print('Epoch: {}/{}'.format(e, args.epochs),
                   'Iteration: {}'.format(iteration),
                   'Loss: {}'.format(cur_loss),
                   'Perplexity: {}'.format(perpl),
-                  'ms/batch: {}'.format(elapsed * 1000 / 100))
+                  'ms/batch: {}'.format(elapsed * 1000 / 1000))
             total_loss = 0
             start_time = time.time()
             if perpl < best_ppl:
