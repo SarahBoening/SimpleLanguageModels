@@ -195,11 +195,12 @@ def main():
     net = net.to(device)
 
     criterion, optimizer = get_loss_and_train_op(net, 0.01)
-    best_ppl = 10000
+    best_ppl = 10.
+	perpl = 10.
     iteration = 0
     total_loss = 0.
     start_time = datetime.datetime.now()
-    plot_every = 500
+    plot_every = 25000
     all_losses = []
     for e in range(args.epochs):
         batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
@@ -230,31 +231,32 @@ def main():
 
             total_loss += loss_value
 
-            if iteration % 100 == 0 and iteration > 0:
-                cur_loss = total_loss / 100
+            if iteration % 1000 == 0 and iteration > 0:
+                cur_loss = total_loss / 1000
                 perpl = math.exp(cur_loss)
                 elapsed = time.time() - start_time
                 print('Epoch: {}/{}'.format(e, args.epochs),
                       'Iteration: {}'.format(iteration),
                       'Loss: {}'.format(cur_loss),
                       'Perplexity: {}'.format(perpl),
-                      'ms/batch: {}'.format(elapsed * 1000 / 100))
+                      'ms/batch: {}'.format(elapsed * 1000 / 1000))
                 total_loss = 0
                 start_time = time.time()
-                if perpl < best_ppl:
+                
+				if perpl < best_ppl:
                     print("saving best checkpoint")
                     torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
                                                               'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
                                                                   args.output_name, perpl)))
                     best_ppl = perpl
-            if iteration % plot_every == 0:
+            
+			if iteration % plot_every == 0:
                 all_losses.append(total_loss / plot_every)
                 total_loss = 0
+                plt.figure()
+                plt.plot(all_losses)
+                plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png',format(iteration)))				
 
-            if iteration % 1000 == 0:
-                torch.save(net.state_dict(),
-                           os.path.join(args.checkpoint_path,
-                                        'checkpoint_pt/model-{}-{}.pth'.format(args.output_name, iteration)))
     # save model after training
     torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
     print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))

@@ -201,8 +201,9 @@ def main():
     iteration = 0
     total_loss = 0.
     start_time = time.time()
-    best_ppl = 10000
-    plot_every = 500
+    best_ppl = 10
+	perpl = 10
+    plot_every = 25000
     all_losses = []
     for e in range(args.epochs):
         batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
@@ -235,7 +236,7 @@ def main():
 
         total_loss += loss_value
 
-        if iteration % 100 == 0 and iteration > 0:
+        if iteration % 1000 == 0 and iteration > 0:
             cur_loss = total_loss / 100
             perpl = math.exp(cur_loss)
             elapsed = time.time() - start_time
@@ -256,6 +257,9 @@ def main():
             if iteration % plot_every == 0:
                 all_losses.append(total_loss / plot_every)
                 total_loss = 0
+				plt.figure()
+                plt.plot(all_losses)
+                plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png',format(iteration)))
 
 # save model after training
 torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))

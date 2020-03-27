@@ -115,7 +115,7 @@ perpl = 10
 oldloss = 10000000
 epochs = 10
 iteration = 0
-log_step = 300
+log_step = 300.
 start_time = datetime.datetime.now()
 for epoch in range(epochs):
     print("Epoch ", epoch, "/ ", epochs)
@@ -142,14 +142,14 @@ for epoch in range(epochs):
             best_ppl = 3.0
 
         if iteration % log_step == 0 and iteration > 0:
-            cur_loss = total_loss / 100.
+            cur_loss = total_loss / log_step
             perpl = math.exp(cur_loss)
             elapsed = datetime.datetime.now() - start_time
             print('Epoch: {}/{}'.format(epoch, epochs),
                   'Iteration: {}'.format(iteration),
                   'Loss: {}'.format(cur_loss),
                   'Perplexity: {}'.format(perpl),
-                  'ms/batch: {}'.format(elapsed * 1000 / 100))
+                  'ms/batch: {}'.format(elapsed * 1000 / log_step))
             total_loss = 0
             start_time = datetime.datetime.now()
         losses.append(total_loss)
