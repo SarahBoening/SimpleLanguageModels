@@ -45,7 +45,7 @@ def get_data_from_file(train_file, batch_size, seq_size, tokenizer):
         if path.startswith("tokenized_"):
             with(open(path, "r", encoding="utf-8", errors="replace")) as f:
                 print('loading tokenized file: ', path)
-                text = f.read()
+                text = f.read().split()
                 list.append(text)
         elif not path.startswith('cached') and path.endswith(".raw") and not os.path.isfile("tokenized_" + path):
             print('loading and tokenizing file: ', path)
