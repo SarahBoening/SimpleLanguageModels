@@ -74,12 +74,12 @@ torch.manual_seed(1)
 
 # path = "G:\\MASTER\\raw_files\\Java\\small\\train\\"
 # path = "/home/nilo4793/Documents/Thesis/corpora/AST/small/train/"
-path = "/home/nilo4793/raid/corpora/AST/small/train/"
-outpath = "/home/nilo4793/raid/output/embedding/ast_small/"
+path = "/home/nilo4793/raid/corpora/Java/small/train/"
+outpath = "/home/nilo4793/raid/output/embedding/javasmall/"
 #outpath = "G:\\MASTER\\outputs\\embeddings\\"
 
 #vocab_path = "vocab_small.txt"
-vocab_path = "/home/nilo4793/raid/corpora/AST/small/vocab.txt"
+vocab_path = "/home/nilo4793/raid/corpora/Java/small/vocab_nltk.txt"
 
 CONTEXT_SIZE = 2  # 2 words to the left, 2 to the right
 tokenizer = tok.Tokenizer(vocab_path, "java")
@@ -154,7 +154,7 @@ for epoch in range(epochs):
             start_time = datetime.datetime.now()
         losses.append(total_loss)
 
-       if perpl < best_ppl:
+        if perpl < best_ppl:
             print("saving best checkpoint")
             torch.save(model.state_dict(), os.path.join(outpath,
                                                       'checkpoint_pt/best_checkpoint-{}-{}.pth'.format("cbow",
