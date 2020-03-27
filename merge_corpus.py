@@ -1,16 +1,17 @@
 import os
 
-path = "G:\\MASTER\\raw_files\\AST\\small\\train\\"
-outpath = "G:\\MASTER\\raw_files\\AST\\small\\merge\\"
+path = "/home/nilo4793/media/Split_Corpus/smaller/small/eval/"
+outpath = "/home/nilo4793/media/Split_Corpus/smaller/small/merge/"
 
-name = "merge_train"
+name = "merge_toked_eval"
 
 files = os.listdir(path)
 listfiles = []
 i = 0
-print(len(files))
-for i in range(8, 13):
-    if files[i].startswith("00"):
+size = len(files)
+print(size)
+for i in range(0, size):
+    if files[i].startswith("tokenized"):
         source = os.path.join(path, files[i])
         with open(source, 'r', encoding='utf-8', errors='replace') as f:
             print("loading file ", files[i])
@@ -18,5 +19,6 @@ for i in range(8, 13):
 dest = os.path.join(outpath, name + ".raw")
 
 print("writing to file ...")
-with open(dest, 'a+', encoding='utf-8', errors='replace') as f:
-    f.writelines(' '.join(str(j) for j in i) + '\n' for i in listfiles)
+with open(dest, 'w', encoding='utf-8', errors='replace') as f:
+    for l in listfiles:
+        f.write("{}\n".format(l))

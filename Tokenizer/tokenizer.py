@@ -45,7 +45,7 @@ class Tokenizer:
             """tokenizes a text with the java tokenizer"""
             data = nltk.word_tokenize(text)
             for i, word in enumerate(data):
-                data[i] = re.findall(r"\w+|[^\w\s]]", word)
+                data[i] = re.findall(r"\w+|[^\w\s]", data[i], re.UNICODE)
             return list(chain.from_iterable(data))
             #return [x.value for x in list(javatok.tokenize(text))]
         else:
