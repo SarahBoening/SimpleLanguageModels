@@ -1,8 +1,8 @@
 import os
 from itertools import chain
 
-inpath = "G:\\MASTER\\raw_files\\Java\\small\\vocab\\"
-outpath = "G:\\MASTER\\raw_files\\Java\\small\\vocab\\"
+inpath = "G:\\MASTER\\raw_files\\AST\\small\\vocab\\"
+outpath = "G:\\MASTER\\raw_files\\AST\\small\\vocab\\"
 
 files = os.listdir(inpath)
 
@@ -21,5 +21,5 @@ print(len(tok))
 
 dest = os.path.join(outpath, "vocab.txt")
 with open(dest, 'w', encoding='utf-8', errors='replace') as f:
-    for t in toks:
+    for t in tok:
         f.write("%s\n" % t)
