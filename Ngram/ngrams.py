@@ -14,27 +14,43 @@ def load_text(path):
     ''' loads all .raw files from path'''
     print("loading files...")
     text = ""
+    list = []
     if os.path.isfile(path):
-        with open(path, "r", errors='replace') as f:
-            text += f.read()
+        if path.startswith("tokenized_"):
+            with(open(path, "r", encoding="utf-8", errors="replace")) as f:
+                print('loading tokenized file: ', path)
+                text = f.read()
+                #list.append(text)
+        elif not path.startswith('cached') and path.endswith(".raw") and not os.path.isfile("tokenized_" + path):
+            print('loading and tokenizing file: ', path)
+            with open(path, "r", encoding="utf-8", errors='replace') as f:
+                text = tokenizer._tokenize(f.read())
+                list.append(text)
+                dest = "tokenized_" + path
+                with open(dest, "w", encoding="utf-8", errors="replace")as f:
+                    f.write(' '.join(text))
     else:
         files = os.listdir(path)
         for file in files:
-            if file.endswith(".raw") and not file.startswith('cached'):
-                print('loading file: ', file)
-                source = os.path.join(path, file)
-                with open(source, "r", errors='replace') as f:
-                    text += f.read()
-                    # list.append(text)
+            source = os.path.join(path, file)
+            if file.startswith("tokenized_"):
+                with(open(source, "r", encoding="utf-8", errors="replace")) as f:
+                    print('loading tokenized file: ', file)
+                    text += f.read().split()
+                    #list.append(text)
+
+            elif not file.startswith('cached') and file.endswith(".raw") and not os.path.isfile(
+                    os.path.join(path, "tokenized_" + file)):
+                print('loading and tokenizing file: ', file)
+
+                with open(source, "r", encoding="utf-8", errors='replace') as f:
+                    text += tokenizer._tokenize(f.read())
+                    #list.append(text)
+                    dest = os.path.join(path, "tokenized_" + file)
+                    with open(dest, "w", encoding="utf-8", errors="replace")as f:
+                        f.write(' '.join(text))
     print("done")
     return text
-
-
-def preprocess_text(data_path):
-    data = nltk.tokenize.sent_tokenize(load_text(data_path))
-    for i, sent in enumerate(data):
-        data[i] = sent.split()
-    return data
 
 
 def save_ngram(model, output_path, n, corpus_name):
@@ -115,18 +131,18 @@ def model_ngram(n, data):
 
 
 if __name__ == "__main__":
-    input_path = "./Ngram/output/model_3_java.csv"
-    output_path = "./Ngram/output/"
-    data_path = "/home/nilo4793/media/Split_Corpus/raw_files/train/subset/"
+    input_path = ""
+    output_path = "./output/"
+    data_path = "/home/nilo4793/Documents/Thesis/corpora/Java/small/train/"
     # data_path = ""
-    corpus = "java"
-    gen = 10
-    model = False
-    load_data = False
+    corpus = "java_small_n3"
+    gen = 5
+    model = True
+    load_data = True
 
     if load_data:
         if data_path:
-            data = preprocess_text(data_path)
+            data = load_data(data_path)
         else:
             data = nltk.corpus.gutenberg.sents('austen-emma.txt')
 
