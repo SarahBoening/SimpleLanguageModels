@@ -14,6 +14,8 @@ import argparse
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import Tokenizer.tokenizer as tok
+from itertools import chain
+
 
 parser = argparse.ArgumentParser(description='Baseline GRU model')
 
@@ -34,7 +36,7 @@ parser.add_argument("--dropout", type=float, default=0.5, help="GRU size")
 parser.add_argument("--gradients_norm", type=int, default=5, help="Gradient normalization")
 parser.add_argument("--initial_words", type=list, default=['public', 'class'],
                     help="List of initial words to predict further")
-parser.add_argument("--do_predict", type=boolean, default=True, help="should network predict at the end")
+parser.add_argument("--do_predict", type=bool, default=True, help="should network predict at the end")
 parser.add_argument("--predict_top_k", type=int, default=5, help="Top k prediction")
 parser.add_argument("--save_step", type=int, default=1000, help="steps to check loss and perpl")
 
@@ -194,7 +196,7 @@ def main():
 
     # load weights from embedding trained model
     # TODO test if is working
-    net.load_state_dict(torch.load(args.embedmodel_path), strict=False)
+    net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
 
     net = net.to(device)
     print("done")
@@ -207,6 +209,7 @@ def main():
     perpl = 10
     plot_every = 25000
     all_losses = []
+    print("Starting training")
     for e in range(args.epochs):
         batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
         state_h, state_c = net.zero_state(args.batch_size)
@@ -262,7 +265,7 @@ def main():
             total_loss = 0
             plt.figure()
             plt.plot(all_losses)
-            plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png', format(iteration)))
+            plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png'.format(iteration)))
 
     # save model after training
     torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))

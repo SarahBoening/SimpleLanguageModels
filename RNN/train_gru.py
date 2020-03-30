@@ -191,7 +191,7 @@ def main():
 
     # load weights from embedding trained model
     # TODO test if is working
-    net.load_state_dict(torch.load(args.embedmodel_path), strict=False)
+    net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
 
     net = net.to(device)
     print("done")
@@ -256,7 +256,7 @@ def main():
                 total_loss = 0
                 plt.figure()
                 plt.plot(all_losses)
-                plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png',format(iteration)))				
+                plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png'.format(iteration)))				
 
     # save model after training
     torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
