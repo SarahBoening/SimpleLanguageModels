@@ -13,6 +13,7 @@ import os
 import argparse
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+import Tokenizer.tokenizer as tok
 
 parser = argparse.ArgumentParser(description='Baseline GRU model')
 
@@ -30,28 +31,29 @@ parser.add_argument("--batch_size", type=int, default=16, help="Size of batches"
 parser.add_argument("--embedding_size", type=int, default=64, help="Embedding size for GRU network")
 parser.add_argument("--lstm_size", type=int, default=64, help="GRU size")
 parser.add_argument("--dropout", type=float, default=0.5, help="GRU size")
-parser.add_argument("--gradient_norm", type=int, default=5, help="Gradient normalization")
+parser.add_argument("--gradients_norm", type=int, default=5, help="Gradient normalization")
 parser.add_argument("--initial_words", type=list, default=['public', 'class'],
                     help="List of initial words to predict further")
 parser.add_argument("--do_predict", type=boolean, default=True, help="should network predict at the end")
 parser.add_argument("--predict_top_k", type=int, default=5, help="Top k prediction")
+parser.add_argument("--save_step", type=int, default=1000, help="steps to check loss and perpl")
 
 
-def get_data_from_file(train_file, batch_size, seq_size, tokenizer):
+def get_data_from_file(path, batch_size, seq_size, tokenizer):
     print("loading files...")
     text = ""
-    list = []
+    liste = []
     if os.path.isfile(path):
         if path.startswith("tokenized_"):
             with(open(path, "r", encoding="utf-8", errors="replace")) as f:
                 print('loading tokenized file: ', path)
                 text = f.read().split()
-                list.append(text)
+                liste.append(text)
         elif not path.startswith('cached') and path.endswith(".raw") and not os.path.isfile("tokenized_" + path):
             print('loading and tokenizing file: ', path)
             with open(path, "r", encoding="utf-8", errors='replace') as f:
                 text = tokenizer._tokenize(f.read())
-                list.append(text)
+                liste.append(text)
                 dest = "tokenized_" + path
                 with open(dest, "w", encoding="utf-8", errors="replace")as f:
                     f.write(' '.join(text))
@@ -63,7 +65,7 @@ def get_data_from_file(train_file, batch_size, seq_size, tokenizer):
                 with(open(source, "r", encoding="utf-8", errors="replace")) as f:
                     print('loading tokenized file: ', file)
                     text = f.read().split()
-                    list.append(text)
+                    liste.append(text)
 
             elif not file.startswith('cached') and file.endswith(".raw") and not os.path.isfile(
                     os.path.join(path, "tokenized_" + file)):
@@ -71,7 +73,7 @@ def get_data_from_file(train_file, batch_size, seq_size, tokenizer):
 
                 with open(source, "r", encoding="utf-8", errors='replace') as f:
                     text = tokenizer._tokenize(f.read())
-                    list.append(text)
+                    liste.append(text)
                     dest = os.path.join(path, "tokenized_" + file)
                     with open(dest, "w", encoding="utf-8", errors="replace")as f:
                         f.write(' '.join(text))
@@ -81,8 +83,8 @@ def get_data_from_file(train_file, batch_size, seq_size, tokenizer):
 
     print('Vocabulary size', n_vocab)
     raw_text = list(chain.from_iterable(liste))
-    del list
     int_text = tokenizer.convert_tokens_to_ids(raw_text)
+    print("building batches..")
     num_batches = int(len(int_text) / (seq_size * batch_size))
     in_text = int_text[:num_batches * batch_size * seq_size]
     out_text = np.zeros_like(in_text)
@@ -90,6 +92,7 @@ def get_data_from_file(train_file, batch_size, seq_size, tokenizer):
     out_text[-1] = in_text[0]
     in_text = np.reshape(in_text, (batch_size, -1))
     out_text = np.reshape(out_text, (batch_size, -1))
+    print("done")
     return n_vocab, in_text, out_text
 
 
@@ -126,7 +129,6 @@ class RNNModule(nn.Module):
 def get_loss_and_train_op(net, lr=0.001):
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(net.parameters(), lr=lr)
-
     return criterion, optimizer
 
 
@@ -177,8 +179,8 @@ def evaluate(model, tokenizer, criterion):
 def main():
     args = parser.parse_args()
 
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_ids
+    # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    # os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_ids
     dev = 'cuda:' + str(args.gpu_ids)
     device = torch.device(dev if torch.cuda.is_available() else 'cpu')
 
@@ -186,21 +188,21 @@ def main():
 
     n_vocab, in_text, out_text = get_data_from_file(
         args.train_file, args.batch_size, args.seq_size, tokenizer)
-
+    print("loading model and weights")
     net = RNNModule(n_vocab, args.seq_size,
                     args.embedding_size, args.lstm_size, args.dropout)
 
     # load weights from embedding trained model
     # TODO test if is working
-    net = net.load_state_dict(torch.load(args.embedmodel_path), strict=False)
+    net.load_state_dict(torch.load(args.embedmodel_path), strict=False)
 
     net = net.to(device)
-
+    print("done")
     criterion, optimizer = get_loss_and_train_op(net, 0.01)
 
     iteration = 0
     total_loss = 0.
-    start_time = time.time()
+    start_time = datetime.datetime.now()
     best_ppl = 10
     perpl = 10
     plot_every = 25000
@@ -236,22 +238,23 @@ def main():
 
         total_loss += loss_value
 
-        if iteration % 1000 == 0 and iteration > 0:
-            cur_loss = total_loss / 1000
+        if iteration % args.save_step == 0 and iteration > 0:
+            cur_loss = total_loss / args.save_step
             perpl = math.exp(cur_loss)
-            elapsed = time.time() - start_time
+            elapsed = datetime.datetime.now() - start_time
             print('Epoch: {}/{}'.format(e, args.epochs),
                   'Iteration: {}'.format(iteration),
                   'Loss: {}'.format(cur_loss),
                   'Perplexity: {}'.format(perpl),
-                  'ms/batch: {}'.format(elapsed * 1000 / 1000))
+                  'ms/batch: {}'.format(elapsed * 1000 / args.save_step))
             total_loss = 0
-            start_time = time.time()
+            start_time = datetime.datetime.now()
             if perpl < best_ppl:
                 print("saving best checkpoint")
                 torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
-                                                          'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(args.output_name,
-                                                                                                           perpl)))
+                                                          'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
+                                                              args.output_name,
+                                                              perpl)))
                 best_ppl = perpl
 
         if iteration % plot_every == 0:
@@ -259,7 +262,7 @@ def main():
             total_loss = 0
             plt.figure()
             plt.plot(all_losses)
-            plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png',format(iteration)))
+            plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png', format(iteration)))
 
     # save model after training
     torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
@@ -271,6 +274,7 @@ def main():
 
     if args.do_predict:
         predict(device, net, args.initial_words, n_vocab, tokenizer, top_k=5)
+
 
 if __name__ == '__main__':
     main()

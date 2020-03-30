@@ -35,6 +35,7 @@ parser.add_argument("--gradients_norm", type=int, default=5, help="Gradient norm
 parser.add_argument("--initial_words", type=str, default=['I', 'am'], help="string seperated by commas for list of initial words to predict further")
 parser.add_argument("--do_predict", type=bool, default=True, help="should network predict at the end")
 parser.add_argument("--predict_top_k", type=int, default=5, help="Top k prediction")
+parser.add_argument("--save_step", type=int, default=1000, help="steps to check loss and perpl")
 
 
 def get_data_from_file(path, batch_size, seq_size, tokenizer):
@@ -232,14 +233,14 @@ def main():
             total_loss += loss_value
 
             if iteration % 1000 == 0 and iteration > 0:
-                cur_loss = total_loss / 1000
+                cur_loss = total_loss / args.save_step
                 perpl = math.exp(cur_loss)
                 elapsed = datetime.datetime.now() - start_time
                 print('Epoch: {}/{}'.format(e+1, args.epochs),
                       'Iteration: {}'.format(iteration),
                       'Loss: {}'.format(cur_loss),
                       'Perplexity: {}'.format(perpl),
-                      'ms/batch: {}'.format(elapsed * 1000 / 1000))
+                      'ms/batch: {}'.format(elapsed * 1000 / args.save_step))
                 total_loss = 0
                 start_time = datetime.datetime.now()
                 
