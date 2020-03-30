@@ -152,14 +152,14 @@ for epoch in range(epochs):
                   'ms/batch: {}'.format(elapsed * 1000 / log_step))
             total_loss = 0
             start_time = datetime.datetime.now()
-        losses.append(total_loss)
 
-        if perpl < best_ppl:
-            print("saving best checkpoint")
-            torch.save(model.state_dict(), os.path.join(outpath,
-                                                      'checkpoint_pt/best_checkpoint-{}-{}.pth'.format("cbow",
-                                                                                                           perpl)))
-            best_ppl = perpl
+            if perpl < best_ppl:
+                print("saving best checkpoint")
+                torch.save(model.state_dict(), os.path.join(outpath,
+                                                          'checkpoint_pt/best_checkpoint-{}-{}.pth'.format("cbow",
+                                                                                                               perpl)))
+                best_ppl = perpl
+        losses.append(total_loss)
 
 
 torch.save(model.state_dict(), os.path.join(outpath, "cbow_finished_loss_{}.pth".format(total_loss)))
