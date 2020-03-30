@@ -20,12 +20,12 @@ def load_text(path):
             with(open(path, "r", encoding="utf-8", errors="replace")) as f:
                 print('loading tokenized file: ', path)
                 text = f.read()
-                #list.append(text)
+                list.append(text.split("\n"))
         elif not path.startswith('cached') and path.endswith(".raw") and not os.path.isfile("tokenized_" + path):
             print('loading and tokenizing file: ', path)
             with open(path, "r", encoding="utf-8", errors='replace') as f:
                 text = tokenizer._tokenize(f.read())
-                list.append(text)
+                list.append(text.split("\n"))
                 dest = "tokenized_" + path
                 with open(dest, "w", encoding="utf-8", errors="replace")as f:
                     f.write(' '.join(text))
@@ -36,21 +36,21 @@ def load_text(path):
             if file.startswith("tokenized_"):
                 with(open(source, "r", encoding="utf-8", errors="replace")) as f:
                     print('loading tokenized file: ', file)
-                    text += ' '.join(f.read().split())
-                    #list.append(text)
+                    text = f.read().split("\n")
+                    list.append(text)
 
             elif not file.startswith('cached') and file.endswith(".raw") and not os.path.isfile(
                     os.path.join(path, "tokenized_" + file)):
                 print('loading and tokenizing file: ', file)
 
                 with open(source, "r", encoding="utf-8", errors='replace') as f:
-                    text += tokenizer._tokenize(f.read())
-                    #list.append(text)
+                    text = tokenizer._tokenize(f.read())
+                    list.append(text.split("\n"))
                     dest = os.path.join(path, "tokenized_" + file)
                     with open(dest, "w", encoding="utf-8", errors="replace")as f:
                         f.write(' '.join(text))
     print("done")
-    return text
+    return list
 
 
 def save_ngram(model, output_path, n, corpus_name):
