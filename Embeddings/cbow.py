@@ -105,6 +105,8 @@ losses = []
 loss_function = nn.NLLLoss()
 model = CBOW(vocab_size, embedding_dim=64)
 optimizer = optim.SGD(model.parameters(), lr=0.001)
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "7"
 device = torch.device('cuda:7' if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cpu')
 model = model.to(device)

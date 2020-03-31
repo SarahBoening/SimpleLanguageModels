@@ -136,7 +136,7 @@ def get_loss_and_train_op(net, lr=0.001):
 
 def predict(device, net, words, n_vocab, tokenizer, top_k=5):
     net.eval()
-    words = args.initial_words
+    #words = args.initial_words
 
     state_h = net.zero_state(1)
     state_h = state_h.to(device)
@@ -180,7 +180,7 @@ def evaluate(model, tokenizer, criterion):
 
 def main():
     args = parser.parse_args()
-
+    torch.manual_seed(1)
     # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     # os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_ids
     dev = 'cuda:' + str(args.gpu_ids)
@@ -205,8 +205,8 @@ def main():
     iteration = 0
     total_loss = 0.
     start_time = datetime.datetime.now()
-    best_ppl = 10
-    perpl = 10
+    best_ppl = 40.
+    perpl = 40.
     plot_every = 25000
     all_losses = []
     print("Starting training")
@@ -252,13 +252,13 @@ def main():
                   'ms/batch: {}'.format(elapsed * 1000 / args.save_step))
             total_loss = 0
             start_time = datetime.datetime.now()
-            if perpl < best_ppl:
-                print("saving best checkpoint")
-                torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
-                                                          'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
-                                                              args.output_name,
-                                                              perpl)))
-                best_ppl = perpl
+        if perpl < best_ppl:
+            print("saving best checkpoint")
+            torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
+                                                      'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
+                                                          args.output_name,
+                                                          perpl)))
+            best_ppl = perpl
 
         if iteration % plot_every == 0:
             all_losses.append(total_loss / plot_every)
@@ -266,7 +266,7 @@ def main():
             plt.figure()
             plt.plot(all_losses)
             plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png'.format(iteration)))
-
+            plt.close()
     # save model after training
     torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
     print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))

@@ -32,7 +32,7 @@ parser.add_argument("--embedding_size", type=int, default=64, help="Embedding si
 parser.add_argument("--gru_size", type=int, default=64, help="GRU size")
 parser.add_argument("--dropout", type=float, default=0.5, help="GRU size")
 parser.add_argument("--gradients_norm", type=int, default=5, help="Gradient normalization")
-parser.add_argument("--initial_words", type=str, default=['I', 'am'], help="string seperated by commas for list of initial words to predict further")
+parser.add_argument("--initial_words", type=str, default="I, am", help="string seperated by commas for list of initial words to predict further")
 parser.add_argument("--do_predict", type=bool, default=True, help="should network predict at the end")
 parser.add_argument("--predict_top_k", type=int, default=5, help="Top k prediction")
 parser.add_argument("--save_step", type=int, default=1000, help="steps to check loss and perpl")
@@ -92,6 +92,7 @@ def get_data_from_file(path, batch_size, seq_size, tokenizer):
     in_text = np.reshape(in_text, (batch_size, -1))
     out_text = np.reshape(out_text, (batch_size, -1))
     print("done")
+    print(in_text[:5])
     return n_vocab, in_text, out_text
 
 
@@ -132,7 +133,7 @@ def get_loss_and_train_op(net, lr=0.001):
 
 def predict(device, net, words, n_vocab, tokenizer, top_k=5):
     net.eval()
-    words = args.initial_words
+    #words = args.initial_words
 
     state_h = net.zero_state(1)
     state_h = state_h.to(device)
@@ -178,6 +179,7 @@ def main():
     args = parser.parse_args()
     #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     #os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_ids)
+    torch.manual_seed(1)
     dev = 'cuda:' + str(args.gpu_ids)
     device = torch.device(dev if torch.cuda.is_available() else 'cpu')
 
@@ -196,8 +198,8 @@ def main():
     net = net.to(device)
     print("done")
     criterion, optimizer = get_loss_and_train_op(net, 0.01)
-    best_ppl = 10.
-    perpl = 10.
+    best_ppl = 40.
+    perpl = 40.
     iteration = 0
     total_loss = 0.
     start_time = datetime.datetime.now()
@@ -244,12 +246,12 @@ def main():
                 total_loss = 0
                 start_time = datetime.datetime.now()
                 
-                if perpl < best_ppl:
-                    print("saving best checkpoint")
-                    torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
-                                                              'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
-                                                                 args.output_name, perpl)))
-                    best_ppl = perpl
+            if perpl < best_ppl:
+                print("saving best checkpoint")
+                torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
+                                                          'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
+                                                             args.output_name, perpl)))
+                best_ppl = perpl
            
             if iteration % plot_every == 0:
                 all_losses.append(total_loss / plot_every)
@@ -257,7 +259,7 @@ def main():
                 plt.figure()
                 plt.plot(all_losses)
                 plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png'.format(iteration)))				
-
+                plt.close()
     # save model after training
     torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
     print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
@@ -267,7 +269,8 @@ def main():
     plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot.png'))
 
     if args.do_predict:
-        predict(device, net, args.initial_words.split(","), n_vocab, tokenizer, top_k=5)
+        words = args.initial_words.split(",")
+        predict(device, net, words, n_vocab, tokenizer, top_k=5)
 
 
 if __name__ == '__main__':
