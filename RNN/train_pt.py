@@ -38,7 +38,7 @@ parser.add_argument("--initial_words", type=list, default=['public', 'class'],
                     help="List of initial words to predict further")
 parser.add_argument("--do_predict", type=bool, default=True, help="should network predict at the end")
 parser.add_argument("--predict_top_k", type=int, default=5, help="Top k prediction")
-parser.add_argument("--save_step", type=int, default=100, help="steps to check loss and perpl")
+parser.add_argument("--save_step", type=int, default=1000, help="steps to check loss and perpl")
 
 
 def get_data_from_file(path, batch_size, seq_size, tokenizer):
@@ -238,35 +238,37 @@ def main():
                 net.parameters(), args.gradients_norm)
 
             optimizer.step()
+            total_loss += loss_value
 
-        total_loss += loss_value
+            if iteration % args.save_step == 0 and iteration > 0:
+                cur_loss = total_loss / args.save_step
+                perpl = math.exp(cur_loss)
+                elapsed = datetime.datetime.now() - start_time
+                print('Epoch: {}/{}'.format(e, args.epochs),
+                      'Iteration: {}'.format(iteration),
+                      'Loss: {}'.format(cur_loss),
+                      'Perplexity: {}'.format(perpl),
+                      'ms/batch: {}'.format(elapsed * 1000 / args.save_step))
+                total_loss = 0
+                start_time = datetime.datetime.now()
+                if perpl < best_ppl:
+                    print("saving best checkpoint")
+                    torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
+                                                              'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
+                                                                  args.output_name,
+                                                                  perpl)))
+                    best_ppl = perpl
 
-        if iteration % args.save_step == 0 and iteration > 0:
-            cur_loss = total_loss / args.save_step
-            perpl = math.exp(cur_loss)
-            elapsed = datetime.datetime.now() - start_time
-            print('Epoch: {}/{}'.format(e, args.epochs),
-                  'Iteration: {}'.format(iteration),
-                  'Loss: {}'.format(cur_loss),
-                  'Perplexity: {}'.format(perpl),
-                  'ms/batch: {}'.format(elapsed * 1000 / args.save_step))
-            total_loss = 0
-            start_time = datetime.datetime.now()
-        if perpl < best_ppl:
-            print("saving best checkpoint")
-            torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
-                                                      'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
-                                                          args.output_name,
-                                                          perpl)))
-            best_ppl = perpl
+            if iteration % plot_every == 0:
+                all_losses.append(total_loss / plot_every)
+                total_loss = 0
+                plt.figure()
+                plt.plot(all_losses)
+                plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png'.format(iteration)))
+                plt.close()
 
-        if iteration % plot_every == 0:
-            all_losses.append(total_loss / plot_every)
-            total_loss = 0
-            plt.figure()
-            plt.plot(all_losses)
-            plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png'.format(iteration)))
-            plt.close()
+
+
     # save model after training
     torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
     print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
