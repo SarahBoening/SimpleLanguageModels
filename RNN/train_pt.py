@@ -138,11 +138,12 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
     net.eval()
     #words = args.initial_words
 
-    state_h = net.zero_state(1)
+    state_h, state_c = net.zero_state(1)
     state_h = state_h.to(device)
+    state_c = state_c.to(device)
     for w in words:
-        ix = torch.tensor([[tokenizer.converts_token_to_id(w)]]).to(device)
-        output, state_h = net(ix, state_h)
+        ix = torch.tensor([[tokenizer.convert_tokens_to_id(w)]]).to(device)
+        output, (state_h, state_c) = net(ix, (state_h, state_c))
 
     choice = torch.argmax(output[0]).item()
     # _, top_ix = torch.topk(output[0], k=top_k)
@@ -153,7 +154,7 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
 
     for _ in range(100):
         ix = torch.tensor([[choice]]).to(device)
-        output, state_h = net(ix, state_h)
+        output, (state_h, state_c) = net(ix, (state_h, state_c))
 
         # _, top_ix = torch.topk(output[0], k=top_k)
         # choices = top_ix.tolist()
