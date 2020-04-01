@@ -24,6 +24,7 @@ parser.add_argument("--checkpoint_path", type=str, default="./output/", help="ou
 parser.add_argument("--vocab_path", type=str, default="./vocab.txt", help="path to vocab file")
 parser.add_argument("--embedmodel_path", type=str, default="../Embedding/output/model.pth",
                     help="path to pretrained embedding model")
+parser.add_argument("--model_path", type=str, default="", help="path to trained model for eval or prediction")
 parser.add_argument("--gpu_ids", type=int, default=0, help="IDs of GPUs to be used if available")
 parser.add_argument("--epochs", type=int, default=10, help="No ofs epochs")
 parser.add_argument("--seq_size", type=int, default=32, help="")
@@ -34,6 +35,8 @@ parser.add_argument("--dropout", type=float, default=0.5, help="GRU size")
 parser.add_argument("--gradients_norm", type=int, default=5, help="Gradient normalization")
 parser.add_argument("--initial_words", type=str, default="I, am", help="string seperated by commas for list of initial words to predict further")
 parser.add_argument("--do_predict", type=bool, default=True, help="should network predict at the end")
+parser.add_argument("--do_train", type=bool, default=True, help="should network train")
+parser.add_argument("--do_eval", type=bool, default=False, help="should network evaluate")
 parser.add_argument("--predict_top_k", type=int, default=5, help="Top k prediction")
 parser.add_argument("--save_step", type=int, default=1000, help="steps to check loss and perpl")
 
@@ -184,89 +187,102 @@ def main():
     device = torch.device(dev if torch.cuda.is_available() else 'cpu')
 
     tokenizer = tok.Tokenizer(args.vocab_path, "java")
-    n_vocab, in_text, out_text = get_data_from_file(
-        args.train_file, args.batch_size, args.seq_size, tokenizer)
+    if args.do_train:
+        n_vocab, in_text, out_text = get_data_from_file(
+            args.train_file, args.batch_size, args.seq_size, tokenizer)
 
-    print("loading model and weights")
-    net = RNNModule(n_vocab, args.seq_size,
-                    args.embedding_size, args.gru_size, args.dropout)
+        print("loading model and weights")
+        net = RNNModule(n_vocab, args.seq_size,
+                        args.embedding_size, args.gru_size, args.dropout)
 
-    # load weights from embedding trained model
-    # TODO test if is working
-    #net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
+        # load weights from embedding trained model
+        # TODO test if is working
+        net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
 
-    net = net.to(device)
-    print("done")
-    criterion, optimizer = get_loss_and_train_op(net, 0.01)
-    best_ppl = 40.
-    perpl = 40.
-    iteration = 0
-    total_loss = 0.
-    start_time = datetime.datetime.now()
-    plot_every = 50000
-    all_losses = []
-    for e in range(args.epochs):
-        batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
-        state_h = net.zero_state(args.batch_size)
-        state_h = state_h.to(device)
-        for x, y in batches:
-            iteration += 1
-            net.train()
+        net = net.to(device)
+        print("done")
+        criterion, optimizer = get_loss_and_train_op(net, 0.01)
+        best_ppl = 40.
+        perpl = 40.
+        iteration = 0
+        total_loss = 0.
+        start_time = datetime.datetime.now()
+        plot_every = 50000
+        all_losses = []
+        for e in range(args.epochs):
+            batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
+            state_h = net.zero_state(args.batch_size)
+            state_h = state_h.to(device)
+            for x, y in batches:
+                iteration += 1
+                net.train()
 
-            optimizer.zero_grad()
+                optimizer.zero_grad()
 
-            x = torch.tensor(x).to(device)
-            y = torch.tensor(y).to(device)
+                x = torch.tensor(x).to(device)
+                y = torch.tensor(y).to(device)
 
-            logits, state_h = net(x, state_h)
-            loss = criterion(logits.transpose(1, 2), y)
+                logits, state_h = net(x, state_h)
+                loss = criterion(logits.transpose(1, 2), y)
 
-            loss_value = loss.item()
+                loss_value = loss.item()
 
-            loss.backward()
+                loss.backward()
 
-            state_h = state_h.detach()
+                state_h = state_h.detach()
 
-            _ = torch.nn.utils.clip_grad_norm_(
-                net.parameters(), args.gradients_norm)
+                _ = torch.nn.utils.clip_grad_norm_(
+                    net.parameters(), args.gradients_norm)
 
-            optimizer.step()
+                optimizer.step()
 
-            total_loss += loss_value
+                total_loss += loss_value
 
-            if iteration % 1000 == 0 and iteration > 0:
-                cur_loss = total_loss / args.save_step
-                perpl = math.exp(cur_loss)
-                elapsed = datetime.datetime.now() - start_time
-                print('Epoch: {}/{}'.format(e+1, args.epochs),
-                      'Iteration: {}'.format(iteration),
-                      'Loss: {}'.format(cur_loss),
-                      'Perplexity: {}'.format(perpl),
-                      'ms/batch: {}'.format(elapsed * 1000 / args.save_step))
-                total_loss = 0
-                start_time = datetime.datetime.now()
-                
-            if perpl < best_ppl:
-                print("saving best checkpoint")
-                torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
-                                                          'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
-                                                             args.output_name, perpl)))
-                best_ppl = perpl
-           
-            if iteration % plot_every == 0:
-                all_losses.append(total_loss / plot_every)
-                total_loss = 0
-                plt.figure()
-                plt.plot(all_losses)
-                plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png'.format(iteration)))				
-                plt.close()
-    # save model after training
-    torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
-    print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
+                if iteration % 1000 == 0 and iteration > 0:
+                    cur_loss = total_loss / args.save_step
+                    perpl = math.exp(cur_loss)
+                    elapsed = datetime.datetime.now() - start_time
+                    print('Epoch: {}/{}'.format(e+1, args.epochs),
+                          'Iteration: {}'.format(iteration),
+                          'Loss: {}'.format(cur_loss),
+                          'Perplexity: {}'.format(perpl),
+                          'ms/batch: {}'.format(elapsed * 1000 / args.save_step))
+                    total_loss = 0
+                    start_time = datetime.datetime.now()
 
-    plt.figure()
-    plt.plot(all_losses)
-    plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot.png'))
+                if perpl < best_ppl:
+                    print("saving best checkpoint")
+                    torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
+                                                              'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
+                                                                 args.output_name, perpl)))
+                    best_ppl = perpl
+
+                if iteration % plot_every == 0:
+                    all_losses.append(total_loss / plot_every)
+                    total_loss = 0
+                    plt.figure()
+                    plt.plot(all_losses)
+                    plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png'.format(iteration)))
+                    plt.close()
+        # save model after training
+        torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
+        print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
+
+        plt.figure()
+        plt.plot(all_losses)
+        plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot.png'))
+    else:
+        print("loading model and weights")
+        net = RNNModule(tokenizer.get_vocab_len(), args.seq_size,
+                        args.embedding_size, args.gru_size, args.dropout)
+
+        # load weights from trained model
+        net.load_state_dict(torch.load(args.model_path))
+        net = net.to(device)
+        print("done")
+
+    if args.do_eval:
+        pass
 
     if args.do_predict:
         words = args.initial_words.split(",")
