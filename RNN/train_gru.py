@@ -47,7 +47,7 @@ def get_data_from_file(path, batch_size, seq_size, tokenizer):
     liste = []
     if os.path.isfile(path):
         file = os.path.basename(path)
-        if file.startswith("tokenized_"):
+        if file.startswith("tokenized_") or file.startswith("enc"):
             with(open(path, "r", encoding="utf-8", errors="replace")) as f:
                 print('loading tokenized file: ', path)
                 text = f.read().split()
@@ -64,7 +64,7 @@ def get_data_from_file(path, batch_size, seq_size, tokenizer):
         files = os.listdir(path)
         for file in files:
             source = os.path.join(path, file)
-            if file.startswith("tokenized_"):
+            if file.startswith("tokenized_") or file.startswith("enc"):
                 with(open(source, "r", encoding="utf-8", errors="replace")) as f:
                     print('loading tokenized file: ', file)
                     text = f.read().split()
@@ -200,7 +200,7 @@ def main():
                         args.embedding_size, args.gru_size, args.dropout)
 
         # load weights from embedding trained model
-        net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
+        #net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
 
         net = net.to(device)
         print("done")
@@ -245,7 +245,7 @@ def main():
                 total_loss += loss_value
 
                 if j == reset_every:
-                    best_ppl = 10.
+                    best_ppl = 40.
 
                 if iteration % 1000 == 0 and iteration > 0:
                     cur_loss = total_loss / args.save_step
