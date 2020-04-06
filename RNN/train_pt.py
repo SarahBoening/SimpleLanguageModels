@@ -197,7 +197,7 @@ def main():
 
     # load weights from embedding trained model
     # TODO test if is working
-    net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
+    #net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
 
     net = net.to(device)
     print("done")

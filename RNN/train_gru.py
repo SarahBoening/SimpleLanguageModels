@@ -246,12 +246,12 @@ def main():
                 total_loss = 0
                 start_time = datetime.datetime.now()
                 
-            if perpl < best_ppl:
-                print("saving best checkpoint")
-                torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
-                                                          'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
-                                                             args.output_name, perpl)))
-                best_ppl = perpl
+                if perpl < best_ppl:
+                    print("saving best checkpoint")
+                    torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
+                                                              'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
+                                                                 args.output_name, perpl)))
+                    best_ppl = perpl
            
             if iteration % plot_every == 0:
                 all_losses.append(total_loss / plot_every)
