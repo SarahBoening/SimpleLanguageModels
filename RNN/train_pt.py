@@ -16,14 +16,14 @@ import matplotlib.ticker as ticker
 import Tokenizer.tokenizer as tok
 from itertools import chain
 
-
 parser = argparse.ArgumentParser(description='Baseline GRU model')
 
-parser.add_argument("--train_file", type=str, default="/home/nilo4793/Documents/Thesis/BPE/java_0125_text_enc.txt",
+parser.add_argument("--train_file", type=str, default="E:\\PyCharm Projects\\Master\\tokenized_0000.java_github_5k.raw",
                     help="input dir of data")
 parser.add_argument("--output_name", type=str, default="lstm_BPE_Test", help="Name of the model")
 parser.add_argument("--checkpoint_path", type=str, default="./output/", help="output path for the model")
-parser.add_argument("--vocab_path", type=str, default="./vocab.txt", help="path to vocab file")
+parser.add_argument("--vocab_path", type=str, default="E:\\PyCharm Projects\\Master\\vocab_nltk.txt",
+                    help="path to vocab file")
 parser.add_argument("--embedmodel_path", type=str, default="../Embedding/output/model.pth",
                     help="path to pretrained embedding model")
 parser.add_argument("--model_path", type=str, default="", help="path to trained model for eval or prediction")
@@ -49,7 +49,8 @@ def get_data_from_file(path, batch_size, seq_size, tokenizer):
     text = ""
     liste = []
     if os.path.isfile(path):
-        if path.startswith("tokenized_"):
+        file = os.path.basename(path)
+        if file.startswith("tokenized_"):
             with(open(path, "r", encoding="utf-8", errors="replace")) as f:
                 print('loading tokenized file: ', path)
                 text = f.read().split()
@@ -139,7 +140,7 @@ def get_loss_and_train_op(net, lr=0.001):
 
 def predict(device, net, words, n_vocab, tokenizer, top_k=5):
     net.eval()
-    #words = args.initial_words
+    # words = args.initial_words
 
     state_h, state_c = net.zero_state(1)
     state_h = state_h.to(device)
@@ -168,16 +169,19 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
     print(' '.join(words).encode('utf-8'))
 
 
-def evaluate(model, tokenizer, criterion):
+def evaluate(model, args, tokenizer, criterion):
     # TODO write evaluation
     model.eval()
     total_loss = 0.
-    state_h, state_c = net.zero_state(args.batch_size)
+    state_h = model.zero_state(args.batch_size)
     # get data
+    data = []
+    y = ""
+    data_source = ""
     with torch.no_grad():
         # iterate over batches
         # data = input, y = target
-        logits, (state_h, state_c) = model(data, (state_h, state_c))
+        logits, state_h = model(data, state_h)
         total_loss += len(data) * criterion(logits.transpose(1, 2), y).item()
     return total_loss / (len(data_source) - 1)
 
@@ -200,7 +204,7 @@ def main():
                         args.embedding_size, args.lstm_size, args.dropout)
 
         # load weights from embedding trained model
-        net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
+        # net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
 
         net = net.to(device)
         print("done")
@@ -212,7 +216,9 @@ def main():
         best_ppl = 40.
         perpl = 40.
         plot_every = 25000
+        reset_every = 20000
         all_losses = []
+        j = 0
         print("Starting training")
         for e in range(args.epochs):
             batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
@@ -221,6 +227,7 @@ def main():
             state_c = state_c.to(device)
             for x, y in batches:
                 iteration += 1
+                j += 1
                 net.train()
 
                 optimizer.zero_grad()
@@ -243,6 +250,8 @@ def main():
 
                 optimizer.step()
                 total_loss += loss_value
+                if j == reset_every:
+                    best_ppl = 10.
 
                 if iteration % args.save_step == 0 and iteration > 0:
                     cur_loss = total_loss / args.save_step
@@ -262,6 +271,7 @@ def main():
                                                                       args.output_name,
                                                                       perpl)))
                         best_ppl = perpl
+                        j = 0
 
                 if iteration % plot_every == 0:
                     all_losses.append(total_loss / plot_every)
@@ -271,8 +281,6 @@ def main():
                     plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png'.format(iteration)))
                     plt.close()
 
-
-
         # save model after training
         torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
         print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
@@ -280,6 +288,16 @@ def main():
         plt.figure()
         plt.plot(all_losses)
         plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot.png'))
+    else:
+        print("loading model and weights")
+        net = RNNModule(tokenizer.get_vocab_len(), args.seq_size,
+                        args.embedding_size, args.lstm_size, args.dropout)
+
+        # load weights from embedding trained model
+        # net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
+
+        net = net.to(device)
+        print("done")
 
     if args.do_eval:
         pass

@@ -13,8 +13,8 @@ import os
 import argparse
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-from itertools import chain
 import Tokenizer.tokenizer as tok
+from itertools import chain
 
 parser = argparse.ArgumentParser(description='Baseline GRU model')
 
@@ -46,7 +46,8 @@ def get_data_from_file(path, batch_size, seq_size, tokenizer):
     text = ""
     liste = []
     if os.path.isfile(path):
-        if path.startswith("tokenized_"):
+        file = os.path.basename(path)
+        if file.startswith("tokenized_"):
             with(open(path, "r", encoding="utf-8", errors="replace")) as f:
                 print('loading tokenized file: ', path)
                 text = f.read().split()
@@ -164,12 +165,15 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
     print(' '.join(words).encode('utf-8'))
 
 
-def evaluate(model, tokenizer, criterion):
+def evaluate(model, args, tokenizer, criterion):
     # TODO write evaluation
     model.eval()
     total_loss = 0.
-    state_h = net.zero_state(args.batch_size)
+    state_h = model.zero_state(args.batch_size)
     # get data
+    data = []
+    y = ""
+    data_source = ""
     with torch.no_grad():
         # iterate over batches
         # data = input, y = target
@@ -196,7 +200,6 @@ def main():
                         args.embedding_size, args.gru_size, args.dropout)
 
         # load weights from embedding trained model
-        # TODO test if is working
         net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
 
         net = net.to(device)
@@ -208,13 +211,16 @@ def main():
         total_loss = 0.
         start_time = datetime.datetime.now()
         plot_every = 50000
+        reset_every = 20000
         all_losses = []
+        j = 0
         for e in range(args.epochs):
             batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
             state_h = net.zero_state(args.batch_size)
             state_h = state_h.to(device)
             for x, y in batches:
                 iteration += 1
+                j += 1
                 net.train()
 
                 optimizer.zero_grad()
@@ -238,6 +244,9 @@ def main():
 
                 total_loss += loss_value
 
+                if j == reset_every:
+                    best_ppl = 10.
+
                 if iteration % 1000 == 0 and iteration > 0:
                     cur_loss = total_loss / args.save_step
                     perpl = math.exp(cur_loss)
@@ -250,12 +259,13 @@ def main():
                     total_loss = 0
                     start_time = datetime.datetime.now()
 
-                if perpl < best_ppl:
-                    print("saving best checkpoint")
-                    torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
-                                                              'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
-                                                                 args.output_name, perpl)))
-                    best_ppl = perpl
+                    if perpl < best_ppl:
+                        print("saving best checkpoint")
+                        torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
+                                                                  'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
+                                                                     args.output_name, perpl)))
+                        best_ppl = perpl
+                        j = 0
 
                 if iteration % plot_every == 0:
                     all_losses.append(total_loss / plot_every)
@@ -271,88 +281,17 @@ def main():
         plt.figure()
         plt.plot(all_losses)
         plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot.png'))
+
     else:
         print("loading model and weights")
         net = RNNModule(tokenizer.get_vocab_len(), args.seq_size,
-                        args.embedding_size, args.gru_size, args.dropout)
+                        args.embedding_size, args.lstm_size, args.dropout)
 
-        # load weights from trained model
-        net.load_state_dict(torch.load(args.model_path))
+        # load weights from embedding trained model
+        #net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
+
         net = net.to(device)
         print("done")
-
-    net = net.to(device)
-    print("done")
-    criterion, optimizer = get_loss_and_train_op(net, 0.01)
-    best_ppl = 40.
-    perpl = 40.
-    iteration = 0
-    total_loss = 0.
-    start_time = datetime.datetime.now()
-    plot_every = 50000
-    all_losses = []
-    for e in range(args.epochs):
-        batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
-        state_h = net.zero_state(args.batch_size)
-        state_h = state_h.to(device)
-        for x, y in batches:
-            iteration += 1
-            net.train()
-
-            optimizer.zero_grad()
-
-            x = torch.tensor(x).to(device)
-            y = torch.tensor(y).to(device)
-
-            logits, state_h = net(x, state_h)
-            loss = criterion(logits.transpose(1, 2), y)
-
-            loss_value = loss.item()
-
-            loss.backward()
-
-            state_h = state_h.detach()
-
-            _ = torch.nn.utils.clip_grad_norm_(
-                net.parameters(), args.gradients_norm)
-
-            optimizer.step()
-
-            total_loss += loss_value
-
-            if iteration % 1000 == 0 and iteration > 0:
-                cur_loss = total_loss / args.save_step
-                perpl = math.exp(cur_loss)
-                elapsed = datetime.datetime.now() - start_time
-                print('Epoch: {}/{}'.format(e+1, args.epochs),
-                      'Iteration: {}'.format(iteration),
-                      'Loss: {}'.format(cur_loss),
-                      'Perplexity: {}'.format(perpl),
-                      'ms/batch: {}'.format(elapsed * 1000 / args.save_step))
-                total_loss = 0
-                start_time = datetime.datetime.now()
-                
-                if perpl < best_ppl:
-                    print("saving best checkpoint")
-                    torch.save(net.state_dict(), os.path.join(args.checkpoint_path,
-                                                              'checkpoint_pt/best_checkpoint-{}-{}.pth'.format(
-                                                                 args.output_name, perpl)))
-                    best_ppl = perpl
-           
-            if iteration % plot_every == 0:
-                all_losses.append(total_loss / plot_every)
-                total_loss = 0
-                plt.figure()
-                plt.plot(all_losses)
-                plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png'.format(iteration)))				
-                plt.close()
-    # save model after training
-    torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
-    print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
-
-    plt.figure()
-    plt.plot(all_losses)
-    plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot.png'))
 
     if args.do_eval:
         pass
