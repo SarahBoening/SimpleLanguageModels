@@ -212,7 +212,7 @@ def main():
             print("loading pretrained model")
             net.load_state_dict(torch.load(args.ptmodel_path, map_location=dev))
             for name, param in net.named_parameters():
-                if not name.startswith("gru"):
+                if not name.startswith("lstm"):
                     param.requires_grad = False
                 else:
                     param.requires_grad = True
