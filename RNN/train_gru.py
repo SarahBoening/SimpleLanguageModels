@@ -24,6 +24,7 @@ parser.add_argument("--checkpoint_path", type=str, default="./output/", help="ou
 parser.add_argument("--vocab_path", type=str, default="./vocab.txt", help="path to vocab file")
 parser.add_argument("--embedmodel_path", type=str, default="../Embedding/output/model.pth",
                     help="path to pretrained embedding model")
+parser.add_argument("--ptmodel_path", type=str, default="", help="path to pretrained model")
 parser.add_argument("--model_path", type=str, default="", help="path to trained model for eval or prediction")
 parser.add_argument("--gpu_ids", type=int, default=0, help="IDs of GPUs to be used if available")
 parser.add_argument("--epochs", type=int, default=10, help="No ofs epochs")
