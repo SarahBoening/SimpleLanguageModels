@@ -25,7 +25,8 @@ parser.add_argument("--checkpoint_path", type=str, default="./output/", help="ou
 parser.add_argument("--vocab_path", type=str, default="E:\\PyCharm Projects\\Master\\vocab_nltk.txt",
                     help="path to vocab file")
 parser.add_argument("--embedmodel_path", type=str, default="../Embedding/output/model.pth",
-                    help="path to pretrained embedding model")
+                                        help="path to pretrained embedding model")
+parser.add_argument("--ptmodel_path", type=str, default="", help="path to pretrained model")
 parser.add_argument("--model_path", type=str, default="", help="path to trained model for eval or prediction")
 parser.add_argument("--gpu_ids", type=int, default=0, help="IDs of GPUs to be used if available")
 parser.add_argument("--epochs", type=int, default=10, help="No ofs epochs")
@@ -39,6 +40,7 @@ parser.add_argument("--initial_words", type=list, default=['public', 'class'],
                     help="List of initial words to predict further")
 parser.add_argument("--do_predict", type=bool, default=True, help="should network predict at the end")
 parser.add_argument("--do_train", type=bool, default=True, help="should network train")
+parser.add_argument("--do_finetune", type=bool, default=False, help="should network finetune, do_train has to be true")
 parser.add_argument("--do_eval", type=bool, default=False, help="should network evaluate")
 parser.add_argument("--predict_top_k", type=int, default=5, help="Top k prediction")
 parser.add_argument("--save_step", type=int, default=1000, help="steps to check loss and perpl")
@@ -50,7 +52,7 @@ def get_data_from_file(path, batch_size, seq_size, tokenizer):
     liste = []
     if os.path.isfile(path):
         file = os.path.basename(path)
-        if file.startswith("tokenized_"):
+        if file.startswith("tokenized_") or file.startswith("enc"):
             with(open(path, "r", encoding="utf-8", errors="replace")) as f:
                 print('loading tokenized file: ', path)
                 text = f.read().split()
@@ -67,7 +69,7 @@ def get_data_from_file(path, batch_size, seq_size, tokenizer):
         files = os.listdir(path)
         for file in files:
             source = os.path.join(path, file)
-            if file.startswith("tokenized_"):
+            if file.startswith("tokenized_") or file.startswith("enc"):
                 with(open(source, "r", encoding="utf-8", errors="replace")) as f:
                     print('loading tokenized file: ', file)
                     text = f.read().split()
@@ -205,10 +207,19 @@ def main():
 
         # load weights from embedding trained model
         # net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
+        # freeze layers that do not need to be finetuned
+        if args.do_finetune:
+            print("loading pretrained model")
+            net.load_state_dict(torch.load(args.ptmodel_path, map_location=dev))
+            for name, param in net.named_parameters():
+                if not name.startswith("gru"):
+                    param.requires_grad = False
+                else:
+                    param.requires_grad = True
 
         net = net.to(device)
         print("done")
-        criterion, optimizer = get_loss_and_train_op(net, 0.01)
+        criterion, optimizer = get_loss_and_train_op(net, 0.001)
 
         iteration = 0
         total_loss = 0.

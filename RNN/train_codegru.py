@@ -190,6 +190,16 @@ def main():
         # load weights from embedding trained model
         #net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
 
+        # freeze layers that do not need to be finetuned
+        if args.do_finetune:
+            print("loading pretrained model")
+            net.load_state_dict(torch.load(args.ptmodel_path, map_location=dev))
+            for name, param in net.named_parameters():
+                if not name.startswith("gru"):
+                    param.requires_grad = False
+                else:
+                    param.requires_grad = True
+
         net = net.to(device)
         print("done")
         criterion, optimizer = get_loss_and_train_op(net, 0.001)
