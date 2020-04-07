@@ -146,7 +146,7 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
     state_h = state_h.to(device)
     state_c = state_c.to(device)
     for w in words:
-        ix = torch.tensor([[tokenizer.convert_tokens_to_id(w)]]).to(device)
+        ix = torch.tensor([[tokenizer.convert_tokens_to_ids(w)]]).to(device)
         output, (state_h, state_c) = net(ix, (state_h, state_c))
 
     choice = torch.argmax(output[0]).item()

@@ -142,7 +142,7 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
     state_h = net.zero_state(1)
     state_h = state_h.to(device)
     for w in words:
-        ix = torch.tensor([[tokenizer.convert_tokens_to_id(w)]]).to(device)
+        ix = torch.tensor([[tokenizer.convert_tokens_to_ids(w)]]).to(device)
         output, state_h = net(ix, state_h)
 
     choice = torch.argmax(output[0]).item()
@@ -205,8 +205,8 @@ def main():
         net = net.to(device)
         print("done")
         criterion, optimizer = get_loss_and_train_op(net, 0.01)
-        best_ppl = 40.
-        perpl = 40.
+        best_ppl = 67.
+        perpl = 67.
         iteration = 0
         total_loss = 0.
         start_time = datetime.datetime.now()
@@ -245,7 +245,7 @@ def main():
                 total_loss += loss_value
 
                 if j == reset_every:
-                    best_ppl = 40.
+                    best_ppl = 67.
 
                 if iteration % 1000 == 0 and iteration > 0:
                     cur_loss = total_loss / args.save_step
