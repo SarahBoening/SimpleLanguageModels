@@ -80,20 +80,13 @@ def get_data_from_file(path, tokenizer):
 
 def get_one_hot(line, i, n_vocab, max_len):
     # one-hot encoded matrix to return context of variable-context sized learning
-    x = []
-    y = []
     if i == max_len:
         i -= 1
-    for j in range(i+1):
-        a = [0 for k in range(n_vocab)]
-        b = [0 for k in range(n_vocab)]
-        a[line[j]] = 1
-        b[line[j+1]] = 1
-        x.append(a)
-        y.append(b)
+    line_x = torch.tensor(line[:i+1])
+    line_y = torch.tensor(line[1:i+1])
+    x = torch.nn.functional.one_hot(line_x.to(torch.int64), num_classes=n_vocab)
+    y = torch.nn.functional.one_hot(line_y.to(torch.int64), num_classes=n_vocab)
     return x, y
-
-
 
 class RNNModule(nn.Module):
     def __init__(self, n_vocab, seq_size, embedding_size, gru_size, dropout):
@@ -214,7 +207,7 @@ def main():
         all_losses = []
         j = 0
         for e in range(args.epochs):
-            state_h = net.zero_state(args.batch_size)
+            state_h = net.zero_state(1)
             state_h = state_h.to(device)
             for line in in_text:
                 max_len = len(line)
