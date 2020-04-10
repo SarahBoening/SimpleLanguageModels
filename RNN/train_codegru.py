@@ -89,8 +89,8 @@ def get_zero_pad(line, i, n_vocab, max_len):
     b = line[1:i+2]
     a.extend([0] * zeros)
     b.extend([0] * zeros)
-    x = torch.tensor(a, dtype=torch.int64)
-    y = torch.tensor(b, dtype=torch.int64)
+    x = torch.tensor([a], dtype=torch.int64)
+    y = torch.tensor([b], dtype=torch.int64)
     #x = torch.nn.functional.one_hot(line_x.to(torch.int64), num_classes=n_vocab)
     #y = torch.nn.functional.one_hot(line_y.to(torch.int64), num_classes=n_vocab)
     return x, y
@@ -226,8 +226,8 @@ def main():
 
                     optimizer.zero_grad()
 
-                    x = torch.tensor(x).to(device)
-                    y = torch.tensor(y).to(device)
+                    x = x.to(device)
+                    y = y.to(device)
 
                     logits, state_h = net(x, state_h)
                     loss = criterion(logits.transpose(1, 2), y)
