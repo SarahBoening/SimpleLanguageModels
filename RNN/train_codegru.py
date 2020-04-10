@@ -52,7 +52,7 @@ def get_data_from_file(path, tokenizer):
     liste = []
     if os.path.isfile(path):
         file = os.path.basename(path)
-        if file.startswith("00"):
+        if file.startswith("tokenized"):
             with(open(path, "r", encoding="utf-8", errors="replace")) as f:
                 print('loading tokenized file: ', path)
                 liste.append(f.readlines())
@@ -81,10 +81,8 @@ def get_data_from_file(path, tokenizer):
 
 def get_one_hot(line, i, n_vocab, max_len):
     # one-hot encoded matrix to return context of variable-context sized learning
-    if i == max_len:
-        i -= 1
     line_x = torch.tensor(line[:i+1])
-    line_y = torch.tensor(line[1:i+1])
+    line_y = torch.tensor(line[1:i+2])
     x = torch.nn.functional.one_hot(line_x.to(torch.int64), num_classes=n_vocab)
     y = torch.nn.functional.one_hot(line_y.to(torch.int64), num_classes=n_vocab)
     return x, y
@@ -212,7 +210,7 @@ def main():
             state_h = state_h.to(device)
             for line in in_text:
                 max_len = len(line)
-                for i, token in enumerate(line):
+                for i in range(max_len-1):
                     x, y = get_one_hot(line, i, n_vocab, max_len)
                     iteration += 1
                     j += 1
