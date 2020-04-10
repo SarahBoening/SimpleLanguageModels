@@ -69,22 +69,30 @@ def get_data_from_file(path, tokenizer):
     print("done")
     in_text = []
     n_vocab = tokenizer.get_vocab_len()
-    # TODO: change
+    max_line = 0
     for file in liste:
         for line in file:
             line = line.rstrip("\n").split()
-            if len(line) > 0:
+            l = len(line)
+            if l > 0:
                 in_text.append(tokenizer.convert_tokens_to_ids(line))
+                if l >= max_line:
+                    max_line = l
     print('Vocabulary size', n_vocab)
-    return n_vocab, in_text
+    return n_vocab, in_text, max_line
 
 
-def get_one_hot(line, i, n_vocab, max_len):
+def get_zero_pad(line, i, n_vocab, max_len):
     # one-hot encoded matrix to return context of variable-context sized learning
-    line_x = torch.tensor(line[:i+1])
-    line_y = torch.tensor(line[1:i+2])
-    x = torch.nn.functional.one_hot(line_x.to(torch.int64), num_classes=n_vocab)
-    y = torch.nn.functional.one_hot(line_y.to(torch.int64), num_classes=n_vocab)
+    zeros = (max_len-1) - (i+1)
+    a = line[:i+1]
+    b = line[1:i+2]
+    a.extend([0] * zeros)
+    b.extend([0] * zeros)
+    x = torch.tensor(a, dtype=torch.int64)
+    y = torch.tensor(b, dtype=torch.int64)
+    #x = torch.nn.functional.one_hot(line_x.to(torch.int64), num_classes=n_vocab)
+    #y = torch.nn.functional.one_hot(line_y.to(torch.int64), num_classes=n_vocab)
     return x, y
 
 class RNNModule(nn.Module):
@@ -173,7 +181,7 @@ def main():
 
     tokenizer = tok.Tokenizer(args.vocab_path, "java")
     if args.do_train:
-        n_vocab, in_text = get_data_from_file(
+        n_vocab, in_text, max_line = get_data_from_file(
             args.train_file, tokenizer)
 
         print("loading model and weights")
@@ -211,7 +219,7 @@ def main():
             for line in in_text:
                 max_len = len(line)
                 for i in range(max_len-1):
-                    x, y = get_one_hot(line, i, n_vocab, max_len)
+                    x, y = get_zero_pad(line, i, n_vocab, max_line)
                     iteration += 1
                     j += 1
                     net.train()
