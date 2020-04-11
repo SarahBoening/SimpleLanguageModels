@@ -31,7 +31,7 @@ parser.add_argument("--model_path", type=str, default="", help="path to trained 
 parser.add_argument("--gpu_ids", type=int, default=0, help="IDs of GPUs to be used if available")
 parser.add_argument("--epochs", type=int, default=100, help="No ofs epochs")
 parser.add_argument("--seq_size", type=int, default=32, help="")
-parser.add_argument("--batch_size", type=int, default=16, help="Size of batches")
+parser.add_argument("--batch_size", type=int, default=512, help="Size of batches")
 parser.add_argument("--embedding_size", type=int, default=300, help="Embedding size for GRU network")
 parser.add_argument("--gru_size", type=int, default=300, help="GRU size")
 parser.add_argument("--dropout", type=float, default=0.25, help="GRU size")
@@ -82,17 +82,29 @@ def get_data_from_file(path, tokenizer):
     return n_vocab, in_text, max_line
 
 
-def get_zero_pad(line, i, n_vocab, max_len):
-    # one-hot encoded matrix to return context of variable-context sized learning
+def get_zero_pad(line, i, max_len, batch_size):
+    # returns context of variable-context sized learning
     zeros = (max_len-1) - (i+1)
     a = line[:i+1]
     b = line[1:i+2]
-    a.extend([0] * zeros)
-    b.extend([0] * zeros)
-    x = torch.tensor([a], dtype=torch.int64)
-    y = torch.tensor([b], dtype=torch.int64)
-    #x = torch.nn.functional.one_hot(line_x.to(torch.int64), num_classes=n_vocab)
-    #y = torch.nn.functional.one_hot(line_y.to(torch.int64), num_classes=n_vocab)
+    max_y = np.ceil((len(a)+zeros) / batch_size)
+    x = np.zeros((max_y, batch_size))
+    y = np.zeros((max_y, batch_size))
+    k = 0
+    stop = False
+    for i in range(x.shape[0]):
+        if stop:
+            break
+        for j in range(x.shape[1]):
+            if k >= len(x):
+                stop = True
+                break
+            x[i, j] = a[k]
+            y[i, j] = b[k]
+            k += 1
+
+    x = torch.tensor(a, dtype=torch.int64)
+    y = torch.tensor(b, dtype=torch.int64)
     return x, y
 
 class RNNModule(nn.Module):
@@ -214,12 +226,12 @@ def main():
         all_losses = []
         j = 0
         for e in range(args.epochs):
-            state_h = net.zero_state(1)
+            state_h = net.zero_state(args.batch_size)
             state_h = state_h.to(device)
             for line in in_text:
                 max_len = len(line)
                 for i in range(max_len-1):
-                    x, y = get_zero_pad(line, i, n_vocab, max_line)
+                    x, y = get_zero_pad(line, i, max_line, args.batch_size)
                     iteration += 1
                     j += 1
                     net.train()
