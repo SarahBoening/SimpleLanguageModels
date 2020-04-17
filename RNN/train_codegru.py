@@ -31,7 +31,7 @@ parser.add_argument("--model_path", type=str, default="", help="path to trained 
 parser.add_argument("--gpu_ids", type=int, default=0, help="IDs of GPUs to be used if available")
 parser.add_argument("--epochs", type=int, default=100, help="No ofs epochs")
 parser.add_argument("--seq_size", type=int, default=32, help="")
-parser.add_argument("--batch_size", type=int, default=512, help="Size of batches")
+parser.add_argument("--batch_size", type=int, default=32, help="Size of batches")
 parser.add_argument("--embedding_size", type=int, default=300, help="Embedding size for GRU network")
 parser.add_argument("--gru_size", type=int, default=300, help="GRU size")
 parser.add_argument("--dropout", type=float, default=0.25, help="GRU size")
@@ -87,24 +87,24 @@ def get_zero_pad(line, i, max_len, batch_size):
     zeros = (max_len-1) - (i+1)
     a = line[:i+1]
     b = line[1:i+2]
-    max_y = np.ceil((len(a)+zeros) / batch_size)
-    x = np.zeros((max_y, batch_size))
-    y = np.zeros((max_y, batch_size))
+    max_y = int(np.ceil((len(a)+zeros) / batch_size))
+    x = np.zeros((batch_size, 256))
+    y = np.zeros((batch_size, 256))
     k = 0
     stop = False
     for i in range(x.shape[0]):
         if stop:
             break
         for j in range(x.shape[1]):
-            if k >= len(x):
+            if k >= len(a):
                 stop = True
                 break
             x[i, j] = a[k]
             y[i, j] = b[k]
             k += 1
 
-    x = torch.tensor(a, dtype=torch.int64)
-    y = torch.tensor(b, dtype=torch.int64)
+    x = torch.tensor(x, dtype=torch.int64)
+    y = torch.tensor(y, dtype=torch.int64)
     return x, y
 
 class RNNModule(nn.Module):
