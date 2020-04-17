@@ -217,8 +217,8 @@ def main():
         net = net.to(device)
         print("done")
         criterion, optimizer = get_loss_and_train_op(net, 0.001)
-        best_ppl = 67.
-        perpl = 67.
+        best_ppl = 80.
+        perpl = 80.
         iteration = 0
         total_loss = 0.
         start_time = datetime.datetime.now()

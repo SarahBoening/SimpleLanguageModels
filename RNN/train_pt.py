@@ -224,8 +224,8 @@ def main():
         iteration = 0
         total_loss = 0.
         start_time = datetime.datetime.now()
-        best_ppl = 40.
-        perpl = 40.
+        best_ppl = 51.
+        perpl = 51.
         plot_every = 25000
         reset_every = 20000
         all_losses = []
