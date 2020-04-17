@@ -217,8 +217,8 @@ def main():
         net = net.to(device)
         print("done")
         criterion, optimizer = get_loss_and_train_op(net, 0.001)
-        best_ppl = 67.
-        perpl = 67.
+        best_ppl = 80.
+        perpl = 80.
         iteration = 0
         total_loss = 0.
         start_time = datetime.datetime.now()
@@ -259,7 +259,7 @@ def main():
                 if j == reset_every:
                     best_ppl = 67.
 
-                if iteration % 1000 == 0 and iteration > 0:
+                if iteration % args.save_step == 0 and iteration > 0:
                     cur_loss = total_loss / args.save_step
                     perpl = math.exp(cur_loss)
                     elapsed = datetime.datetime.now() - start_time
