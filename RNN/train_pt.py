@@ -126,7 +126,7 @@ class RNNModule(nn.Module):
         embed = self.drop(self.encode(x))
         output, state = self.lstm(embed, prev_state)
         logits = self.decode(output)
-        preds = F.log_softmax(logits, dim=1)
+        preds = F.log_softmax(logits[0], dim=1)
         return preds, state
 
     def zero_state(self, batch_size):

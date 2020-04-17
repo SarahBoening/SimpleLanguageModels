@@ -124,7 +124,7 @@ class RNNModule(nn.Module):
         embed = self.drop(self.encode(x))
         output, state = self.gru(embed, prev_state)
         logits = self.decode(output)
-        preds = F.log_softmax(logits, dim=1)
+        preds = F.log_softmax(logits[0], dim=1)
         return preds, state
 
     def zero_state(self, batch_size):
@@ -150,7 +150,7 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
     # _, top_ix = torch.topk(output[0], k=top_k)
     # choices = top_ix.tolist()
     # choice = choices[0][0]
-    print(tokenizer.convert_ids_to_tokens(choice))
+    # print(tokenizer.convert_ids_to_tokens(choice))
     words.append(tokenizer.convert_ids_to_tokens(choice))
 
     for _ in range(100):
@@ -162,7 +162,7 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
         # choice = choices[0][0]
         choice = torch.argmax(output[0]).item()
         words.append(tokenizer.convert_ids_to_tokens(choice))
-        print(tokenizer.convert_ids_to_tokens(choice))
+        # print(tokenizer.convert_ids_to_tokens(choice))
     print(' '.join(words).encode('utf-8'))
 
 
@@ -258,7 +258,7 @@ def main():
                     if j == reset_every:
                        best_ppl = 10.
 
-                    if iteration % 1000 == 0 and iteration > 0:
+                    if iteration % args.save_step == 0 and iteration > 0:
                         cur_loss = total_loss / args.save_step
                         perpl = math.exp(cur_loss)
                         elapsed = datetime.datetime.now() - start_time
