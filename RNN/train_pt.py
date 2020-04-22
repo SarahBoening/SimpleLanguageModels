@@ -40,10 +40,10 @@ parser.add_argument("--dropout", type=float, default=0.5, help="GRU size")
 parser.add_argument("--gradients_norm", type=int, default=5, help="Gradient normalization")
 parser.add_argument("--initial_words", type=list, default=['public', 'class'],
                     help="List of initial words to predict further")
-parser.add_argument("--do_predict", type=bool, default=True, help="should network predict at the end")
-parser.add_argument("--do_train", type=bool, default=True, help="should network train")
+parser.add_argument("--do_predict", type=bool, default=False, help="should network predict at the end")
+parser.add_argument("--do_train", type=bool, default=False, help="should network train")
 parser.add_argument("--do_finetune", type=bool, default=False, help="should network finetune, do_train has to be true")
-parser.add_argument("--do_eval", type=bool, default=False, help="should network evaluate")
+parser.add_argument("--do_eval", type=bool, default=True, help="should network evaluate")
 parser.add_argument("--predict_top_k", type=int, default=5, help="Top k prediction")
 parser.add_argument("--save_step", type=int, default=1000, help="steps to check loss and perpl")
 
@@ -177,28 +177,24 @@ def evaluate(model, in_text, out_text, device, args, criterion):
     model.eval()
     total_loss = 0.
     state_h, state_c = model.zero_state(args.batch_size)
+    state_h = state_h.to(device)
+    state_c = state_c.to(device)
     # get data
     batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
-    eval_loss = 0
-    total_loss = 0
+    eval_loss = 0.
+    total_loss = 0.
     nb_eval_steps = 0
     with torch.no_grad():
         for x, y in batches:
             x = torch.tensor(x, dtype=torch.int64).to(device)
             y = torch.tensor(y, dtype=torch.int64).to(device)
             output, (state_h, state_c) = model(x, (state_h, state_c))
-            lm_loss = output[0]
-            eval_loss += lm_loss.mean().item()
             loss = criterion(output.transpose(1, 2), y).item()
             total_loss += loss
-        nb_eval_steps += 1
-    eval_loss = eval_loss / nb_eval_steps
+            nb_eval_steps += 1
     total_loss = total_loss / nb_eval_steps
-    perplexity = torch.exp(torch.tensor(eval_loss))
-    perplexity2 = torch.exp(torch.tensor(total_loss))
-    print(perplexity)
-    print(perplexity2)
-    return perplexity
+    perplexity2 = math.exp(total_loss)
+    return perplexity2
 
 
 def main():

@@ -174,7 +174,6 @@ def evaluate(model, in_text, out_text, device, args, criterion):
     total_loss = 0.
     state_h = model.zero_state(args.batch_size)
     state_h = state_h.to(device)
-    # get data
     batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
     eval_loss = 0.
     total_loss = 0.
@@ -317,9 +316,15 @@ def main():
             args.eval_file, args.batch_size, args.seq_size, tokenizer)
         criterion, optimizer = get_loss_and_train_op(net, 0.001)
         perpl = evaluate(net, in_text, out_text, device, args, criterion)
+<<<<<<< HEAD
+        file = os.path.join(args.checkpoint_path, args.output_name+"_eval.txt")
+        with open(file, "w+") as f:
+            f.write("perplexity: ", perpl)
+=======
         file_e = os.path.join(args.checkpoint_path, args.output_name+"_eval.txt")
         with open(file_e, "w+") as f:
             f.write("perplexity: {}".format(perpl))
+>>>>>>> a0c4413382661931e1b3fdc261c762e702fa6e52
 
 
     if args.do_predict:
