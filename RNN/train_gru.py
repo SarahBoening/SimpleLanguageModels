@@ -19,6 +19,8 @@ from itertools import chain
 parser = argparse.ArgumentParser(description='Baseline GRU model')
 
 parser.add_argument("--train_file", type=str, default="./data/trump.txt", help="input dir of data")
+parser.add_argument("--eval_file", type=str, default="E:\\PyCharm Projects\\Master\\tokenized_0000.java_github_5k.raw",
+                    help="input dir of eval data")
 parser.add_argument("--output_name", type=str, default="gru_trump", help="Name of the model")
 parser.add_argument("--checkpoint_path", type=str, default="./output/", help="output path for the model")
 parser.add_argument("--vocab_path", type=str, default="./vocab.txt", help="path to vocab file")
