@@ -37,9 +37,9 @@ parser.add_argument("--gru_size", type=int, default=64, help="GRU size")
 parser.add_argument("--dropout", type=float, default=0.5, help="GRU size")
 parser.add_argument("--gradients_norm", type=int, default=5, help="Gradient normalization")
 parser.add_argument("--initial_words", type=str, default="I, am", help="string seperated by commas for list of initial words to predict further")
-parser.add_argument("--do_predict", type=bool, default=True, help="should network predict at the end")
-parser.add_argument("--do_train", type=bool, default=True, help="should network train")
-parser.add_argument("--do_eval", type=bool, default=False, help="should network evaluate")
+parser.add_argument("--do_predict", type=bool, default=False, help="should network predict at the end")
+parser.add_argument("--do_train", type=bool, default=False, help="should network train")
+parser.add_argument("--do_eval", type=bool, default=True, help="should network evaluate")
 parser.add_argument("--do_finetune", type=bool, default=False, help="should network finetune, do_train has to be true")
 parser.add_argument("--predict_top_k", type=int, default=5, help="Top k prediction")
 parser.add_argument("--save_step", type=int, default=1000, help="steps to check loss and perpl")
@@ -173,8 +173,7 @@ def evaluate(model, in_text, out_text, device, args, criterion):
     model.eval()
     total_loss = 0.
     state_h = model.zero_state(args.batch_size)
-	state_h = state_h.to(device)
-    # get data
+    state_h = state_h.to(device)
     batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
     eval_loss = 0.
     total_loss = 0.
@@ -188,14 +187,14 @@ def evaluate(model, in_text, out_text, device, args, criterion):
             eval_loss += lm_loss.mean().item()
             loss = criterion(output.transpose(1, 2), y).item()
             total_loss += loss
-        nb_eval_steps += 1
+            nb_eval_steps += 1
     eval_loss = eval_loss / nb_eval_steps
     total_loss = total_loss / nb_eval_steps
     perplexity = math.exp(eval_loss)
     perplexity2 = math.exp(total_loss)
     print(perplexity)
     print(perplexity2)
-    return perplexity
+    return perplexity2
 
 def main():
     args = parser.parse_args()
@@ -323,9 +322,15 @@ def main():
             args.eval_file, args.batch_size, args.seq_size, tokenizer)
         criterion, optimizer = get_loss_and_train_op(net, 0.001)
         perpl = evaluate(net, in_text, out_text, device, args, criterion)
+<<<<<<< HEAD
         file = os.path.join(args.checkpoint_path, args.output_name+"_eval.txt")
         with open(file, "w+") as f:
             f.write("perplexity: ", perpl)
+=======
+        file_e = os.path.join(args.checkpoint_path, args.output_name+"_eval.txt")
+        with open(file_e, "w+") as f:
+            f.write("perplexity: {}".format(perpl))
+>>>>>>> a0c4413382661931e1b3fdc261c762e702fa6e52
 
 
     if args.do_predict:
