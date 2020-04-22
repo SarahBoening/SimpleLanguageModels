@@ -184,17 +184,11 @@ def evaluate(model, in_text, out_text, device, args, criterion):
             x = torch.tensor(x, dtype=torch.int64).to(device)
             y = torch.tensor(y, dtype=torch.int64).to(device)
             output, state_h = model(x, state_h)
-            lm_loss = output[0]
-            eval_loss += lm_loss.mean().item()
             loss = criterion(output.transpose(1, 2), y).item()
             total_loss += loss
             nb_eval_steps += 1
-    eval_loss = eval_loss / nb_eval_steps
     total_loss = total_loss / nb_eval_steps
-    perplexity = math.exp(eval_loss)
     perplexity2 = math.exp(total_loss)
-    print(perplexity)
-    print(perplexity2)
     return perplexity2
 
 def main():
