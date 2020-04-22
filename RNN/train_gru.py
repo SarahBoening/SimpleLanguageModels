@@ -173,10 +173,11 @@ def evaluate(model, in_text, out_text, device, args, criterion):
     model.eval()
     total_loss = 0.
     state_h = model.zero_state(args.batch_size)
+	state_h = state_h.to(device)
     # get data
     batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
-    eval_loss = 0
-    total_loss = 0
+    eval_loss = 0.
+    total_loss = 0.
     nb_eval_steps = 0
     with torch.no_grad():
         for x, y in batches:
@@ -190,8 +191,8 @@ def evaluate(model, in_text, out_text, device, args, criterion):
         nb_eval_steps += 1
     eval_loss = eval_loss / nb_eval_steps
     total_loss = total_loss / nb_eval_steps
-    perplexity = torch.exp(torch.tensor(eval_loss))
-    perplexity2 = torch.exp(torch.tensor(total_loss))
+    perplexity = math.exp(eval_loss)
+    perplexity2 = math.exp(total_loss)
     print(perplexity)
     print(perplexity2)
     return perplexity
@@ -309,7 +310,7 @@ def main():
     else:
         print("loading model and weights")
         net = RNNModule(tokenizer.get_vocab_len(), args.seq_size,
-                        args.embedding_size, args.lstm_size, args.dropout)
+                        args.embedding_size, args.gru_size, args.dropout)
 
         # load weights from embedding trained model
         net.load_state_dict(torch.load(args.model_path, map_location=device), strict=False)
@@ -321,7 +322,7 @@ def main():
         n_vocab, in_text, out_text = get_data_from_file(
             args.eval_file, args.batch_size, args.seq_size, tokenizer)
         criterion, optimizer = get_loss_and_train_op(net, 0.001)
-        perpl = evaluate(net, in_text, out_text, device, args, tokenizer, criterion)
+        perpl = evaluate(net, in_text, out_text, device, args, criterion)
         file = os.path.join(args.checkpoint_path, args.output_name+"_eval.txt")
         with open(file, "w+") as f:
             f.write("perplexity: ", perpl)

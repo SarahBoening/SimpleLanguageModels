@@ -177,10 +177,12 @@ def evaluate(model, in_text, out_text, device, args, criterion):
     model.eval()
     total_loss = 0.
     state_h, state_c = model.zero_state(args.batch_size)
+	state_h = state_h.to(device)
+	state_c = state_c.to(device)
     # get data
     batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
-    eval_loss = 0
-    total_loss = 0
+    eval_loss = 0.
+    total_loss = 0.
     nb_eval_steps = 0
     with torch.no_grad():
         for x, y in batches:
@@ -194,8 +196,8 @@ def evaluate(model, in_text, out_text, device, args, criterion):
         nb_eval_steps += 1
     eval_loss = eval_loss / nb_eval_steps
     total_loss = total_loss / nb_eval_steps
-    perplexity = torch.exp(torch.tensor(eval_loss))
-    perplexity2 = torch.exp(torch.tensor(total_loss))
+    perplexity = math.exp(eval_loss)
+    perplexity2 = math.exp(total_loss)
     print(perplexity)
     print(perplexity2)
     return perplexity
