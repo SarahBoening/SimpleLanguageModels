@@ -126,7 +126,7 @@ class RNNModule(nn.Module):
         output, state = self.gru(embed, prev_state)
         logits = self.decode(output)
         preds = F.log_softmax(logits[0], dim=1)
-        return preds, state
+        return logits, state
 
     def zero_state(self, batch_size):
         return torch.zeros(1, batch_size, self.gru_size)
@@ -147,7 +147,7 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
         ix = torch.tensor([[tokenizer.convert_tokens_to_ids(w)]]).to(device)
         output, state_h = net(ix, state_h)
 
-    choice = torch.argmax(output[0]).item()
+    choice = torch.argmax(F.log_softmax(output[0], dim=1)).item()
     # _, top_ix = torch.topk(output[0], k=top_k)
     # choices = top_ix.tolist()
     # choice = choices[0][0]

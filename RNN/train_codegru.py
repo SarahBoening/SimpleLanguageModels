@@ -131,7 +131,7 @@ class RNNModule(nn.Module):
         output, state = self.gru(embed, prev_state)
         logits = self.decode(output)
         preds = F.log_softmax(logits[0], dim=1)
-        return preds, state
+        return logits, state
 
     def zero_state(self, batch_size):
         return torch.zeros(1, batch_size, self.gru_size)
