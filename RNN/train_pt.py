@@ -167,25 +167,36 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
         # choice = choices[0][0]
         choice = torch.argmax(output[0]).item()
         words.append(tokenizer.convert_ids_to_tokens(choice))
-        print(tokenizer.convert_ids_to_tokens(choice))
+        
     print(' '.join(words).encode('utf-8'))
 
 
-def evaluate(model, args, tokenizer, criterion):
-    # TODO write evaluation
+def evaluate(model, in_text, out_text, device, args, criterion):
     model.eval()
     total_loss = 0.
-    state_h = model.zero_state(args.batch_size)
+    state_h, state_c = model.zero_state(args.batch_size)
     # get data
-    data = []
-    y = ""
-    data_source = ""
+    batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
+    eval_loss = 0
+    total_loss = 0
+    nb_eval_steps = 0
     with torch.no_grad():
-        # iterate over batches
-        # data = input, y = target
-        logits, state_h = model(data, state_h)
-        total_loss += len(data) * criterion(logits.transpose(1, 2), y).item()
-    return total_loss / (len(data_source) - 1)
+        for x, y in batches:
+            x = torch.tensor(x, dtype=torch.int64).to(device)
+            y = torch.tensor(y, dtype=torch.int64).to(device)
+            output, (state_h, state_c) = model(x, (state_h, state_c))
+            lm_loss = output[0]
+            eval_loss += lm_loss.mean().item()
+            loss = criterion(output.transpose(1, 2), y).item()
+            total_loss += loss
+        nb_eval_steps += 1
+    eval_loss = eval_loss / nb_eval_steps
+    total_loss = total_loss / nb_eval_steps
+    perplexity = torch.exp(torch.tensor(eval_loss))
+    perplexity2 = torch.exp(torch.tensor(total_loss))
+    print(perplexity)
+    print(perplexity2)
+    return perplexity
 
 
 def main():
@@ -305,13 +316,19 @@ def main():
                         args.embedding_size, args.lstm_size, args.dropout)
 
         # load weights from embedding trained model
-        # net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
+        net.load_state_dict(torch.load(args.model_path, map_location=device), strict=False)
 
         net = net.to(device)
         print("done")
 
     if args.do_eval:
-        pass
+        n_vocab, in_text, out_text = get_data_from_file(
+            args.eval_file, args.batch_size, args.seq_size, tokenizer)
+        criterion, optimizer = get_loss_and_train_op(net, 0.001)
+        perpl = evaluate(net, in_text, out_text, device, args, tokenizer, criterion)
+        file = os.path.join(args.checkpoint_path, args.output_name+"_eval.txt")
+        with open(file, "w+") as f:
+            f.write("perplexity: ", perpl)
 
     if args.do_predict:
         predict(device, net, args.initial_words, tokenizer.get_vocab_len(), tokenizer, top_k=5)
