@@ -1,12 +1,18 @@
 import csv
 import os
-from nltk import ngrams, trigrams
+from nltk import ngrams, trigrams, bigrams
 import nltk.corpus
 from collections import Counter, defaultdict
 import random
+import tokenizer
+import datetime
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import dill as pickle
-
-
+import math
+from nltk.lm.util import log_base2
+from nltk.lm.preprocessing import padded_everygram_pipeline
 # based on: https://nlpforhackers.io/language-models/
 
 
@@ -16,39 +22,33 @@ def load_text(path):
     text = ""
     list = []
     if os.path.isfile(path):
-        if path.startswith("tokenized_"):
+        file = os.path.basename(path)
+        if file.startswith("token") and "valid" not in file:
             with(open(path, "r", encoding="utf-8", errors="replace")) as f:
                 print('loading tokenized file: ', path)
-                text = f.read()
-                list.append(text.split("\n"))
-        elif not path.startswith('cached') and path.endswith(".raw") and not os.path.isfile("tokenized_" + path):
-            print('loading and tokenizing file: ', path)
-            with open(path, "r", encoding="utf-8", errors='replace') as f:
-                text = tokenizer._tokenize(f.read())
-                list.append(text.split("\n"))
-                dest = "tokenized_" + path
-                with open(dest, "w", encoding="utf-8", errors="replace")as f:
-                    f.write(' '.join(text))
+                list.append(f.read().split(" "))
+                #text += f.read()
     else:
         files = os.listdir(path)
         for file in files:
             source = os.path.join(path, file)
-            if file.startswith("tokenized_"):
+            if (file.startswith("enc_") or file.startswith("token")) and "valid" not in file:
                 with(open(source, "r", encoding="utf-8", errors="replace")) as f:
                     print('loading tokenized file: ', file)
-                    text = f.read().split("\n")
-                    list.append(text)
+                    list.append(f.read().split(" "))
+                    #text += f.read()
 
-            elif not file.startswith('cached') and file.endswith(".raw") and not os.path.isfile(
-                    os.path.join(path, "tokenized_" + file)):
-                print('loading and tokenizing file: ', file)
-
-                with open(source, "r", encoding="utf-8", errors='replace') as f:
-                    text = tokenizer._tokenize(f.read())
-                    list.append(text.split("\n"))
-                    dest = os.path.join(path, "tokenized_" + file)
-                    with open(dest, "w", encoding="utf-8", errors="replace")as f:
-                        f.write(' '.join(text))
+    '''
+    result = []
+    for entry in list:
+        for line in entry:
+            line = line.rstrip("\n")
+            line = line.rstrip("[CLS]")
+            line = line.rstrip("[SEP]")
+            l = len(line)
+            if l > 0:
+               result.append(line)
+    '''
     print("done")
     return list
 
@@ -57,7 +57,7 @@ def save_ngram(model, output_path, n, corpus_name):
     ''' save model '''
     print('saving')
     file = os.path.join(output_path, "model_{}_{}.csv".format(n, corpus_name))
-    with open(file, 'w+', encoding='UTF-8', errors='replace', newline='') as csv_file:
+    with open(file, 'w', encoding='UTF-8', errors='replace', newline='') as csv_file:
         csvwriter = csv.writer(csv_file, delimiter='\t')
         for w1_w2 in model:
             for w3 in model[w1_w2]:
@@ -79,35 +79,49 @@ def load_ngram(input_path):
 
 def predict(model, is_count, text, max_len):
     sentence_finished = False
-
+    old = len(text)
+    #text += [0]* max_len
     for i in range(max_len):
         # select a random probability threshold
         # random.seed(6)
         r = random.random()
         accumulator = .0
         if is_count:
+            max_p = 0
+            words = []
             for word in model[tuple(text[-2:])].keys():
                 accumulator += model[tuple(text[-2:])][word]
                 # select words that are above the probability threshold
                 if accumulator >= r:
                     text.append(word)
                     break
+            '''
+            for word in model[tuple(text[-2:])].keys():
+                #print(word)
+                p = model[tuple(text[-2:])][word]
+                if p >= max_p:
+                    words.append(word)
+                    #text[i+old] = word
+                #accumulator +=
+                # select words that are above the probability threshold
+                # if accumulator >= r:
+            text.append(words[-1])
+            print(words[-1])
+            print(len(text))
+            '''
+
         else:
             for word in model[str(tuple(text[-2:]))].keys():
                 accumulator += model[str(tuple(text[-2:]))][word]
                 # select words that are above the probability threshold
                 if accumulator >= r:
-                    text.append(word)
+                    #text.append(word)
                     break
         # if text[-2:] == [None, None]:
         # sentence_finished = True
 
-    print(' '.join([t for t in text if t]))
-
-
-def evaluate(model):
-    # TODO
-    pass
+    #print(' '.join([t for t in text if t]))
+    return text
 
 
 def model_ngram(n, data):
@@ -130,13 +144,36 @@ def model_ngram(n, data):
     return model
 
 
+def evaluate(model, text, iscount):
+    total_loss= 0
+
+
+def logscore(model, word, context):
+    if model[context][word] == 0:
+        return 0
+    else:
+        return math.log2(model[context][word])
+
+
+def entropy(model, ngrams):
+    x = [logscore(model, ngram[-1], ngram[:-1]) for ngram in ngrams]
+    mean = sum(x)/len(x)
+    return -1*mean
+
+
+def perplexity(model, ngrams):
+    return pow(2.0, entropy(model, ngrams))
+
+
 if __name__ == "__main__":
-    input_path = ""
-    output_path = "./output/"
-    data_path = "/home/nilo4793/Documents/Thesis/corpora/Java/small/train/"
-    # data_path = ""
-    corpus = "java_small_n3"
-    gen = 5
+    start = datetime.datetime.now()
+    input_path = "home/nilo4793/media/models/ngram"
+    output_path = "home/nilo4793/media/models/ngram"
+    eval_path = "/home/nilo4793/Documents/Thesis/BPE/temp"
+    data_path = "/home/nilo4793/Documents/Thesis/BPE/enc_java_train_small.txt"
+    #data_path = ""
+    corpus = "enc_java_n3"
+    gen = 10
     model = True
     load_data = True
 
@@ -148,10 +185,28 @@ if __name__ == "__main__":
 
     if not model:
         m = load_ngram(input_path)
+        now = datetime.datetime.now()
+        print("Time loading model: ", (now-start))
+
     else:
         n = 3
         m = model_ngram(n, data)
+        now = datetime.datetime.now()
+        print("modeling: ", now-start)
         save_ngram(m, output_path, n, corpus)
 
-    start = [None, None]
-    predict(m, model, start, gen)
+    now = datetime.datetime.now()
+    print("with saving:", now-start)
+    start = ["public", "static"]
+    #start = [None, None]
+    pred = predict(m, model, start, gen)
+    print(pred)
+    # evaluate
+    eval = load_text(eval_path)
+    for item in eval:
+        test = trigrams(item, pad_right=True, pad_left=True)
+    test_data = []
+    for w in test:
+        test_data.append(w)
+    print("perplexity: ", perplexity(m, test_data))
+
