@@ -68,7 +68,7 @@ def get_data_from_file(path, batch_size, seq_size, tokenizer):
         files = os.listdir(path)
         for file in files:
             source = os.path.join(path, file)
-            if file.startswith("tokenized_") or file.startswith("enc"):
+            if file.startswith("tokenized_") or file.startswith("enc") and "valid" not in file:
                 with(open(source, "r", encoding="utf-8", errors="replace")) as f:
                     print('loading tokenized file: ', file)
                     text = f.read().split()
@@ -306,7 +306,7 @@ def main():
                         args.embedding_size, args.gru_size, args.dropout)
 
         # load weights from embedding trained model
-        net.load_state_dict(torch.load(args.model_path, map_location=device), strict=False)
+        net.load_state_dict(torch.load(args.model_path, map_location=device))
 
         net = net.to(device)
         print("done")
@@ -316,15 +316,10 @@ def main():
             args.eval_file, args.batch_size, args.seq_size, tokenizer)
         criterion, optimizer = get_loss_and_train_op(net, 0.001)
         perpl = evaluate(net, in_text, out_text, device, args, criterion)
-<<<<<<< HEAD
-        file = os.path.join(args.checkpoint_path, args.output_name+"_eval.txt")
-        with open(file, "w+") as f:
-            f.write("perplexity: ", perpl)
-=======
+        print(perpl)
         file_e = os.path.join(args.checkpoint_path, args.output_name+"_eval.txt")
         with open(file_e, "w+") as f:
             f.write("perplexity: {}".format(perpl))
->>>>>>> a0c4413382661931e1b3fdc261c762e702fa6e52
 
 
     if args.do_predict:
