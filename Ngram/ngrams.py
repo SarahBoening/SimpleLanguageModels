@@ -1,18 +1,11 @@
 import csv
 import os
-from nltk import ngrams, trigrams, bigrams
+from nltk import trigrams
 import nltk.corpus
-from collections import Counter, defaultdict
+from collections import defaultdict
 import random
-import tokenizer
 import datetime
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import dill as pickle
 import math
-from nltk.lm.util import log_base2
-from nltk.lm.preprocessing import padded_everygram_pipeline
 # based on: https://nlpforhackers.io/language-models/
 
 
@@ -23,7 +16,7 @@ def load_text(path):
     list = []
     if os.path.isfile(path):
         file = os.path.basename(path)
-        if file.startswith("token") and "valid" not in file:
+        if file.startswith("token") and "valid" not in file or file.startswith("enc"):
             with(open(path, "r", encoding="utf-8", errors="replace")) as f:
                 print('loading tokenized file: ', path)
                 list.append(f.read().split(" "))
@@ -57,7 +50,7 @@ def save_ngram(model, output_path, n, corpus_name):
     ''' save model '''
     print('saving')
     file = os.path.join(output_path, "model_{}_{}.csv".format(n, corpus_name))
-    with open(file, 'w', encoding='UTF-8', errors='replace', newline='') as csv_file:
+    with open(file, 'w+', encoding='UTF-8', errors='replace', newline='') as csv_file:
         csvwriter = csv.writer(csv_file, delimiter='\t')
         for w1_w2 in model:
             for w3 in model[w1_w2]:
@@ -167,15 +160,15 @@ def perplexity(model, ngrams):
 
 if __name__ == "__main__":
     start = datetime.datetime.now()
-    input_path = "home/nilo4793/media/models/ngram"
-    output_path = "home/nilo4793/media/models/ngram"
-    eval_path = "/home/nilo4793/Documents/Thesis/BPE/temp"
-    data_path = "/home/nilo4793/Documents/Thesis/BPE/enc_java_train_small.txt"
+    input_path = "/home/nilo4793/media/models/ngram/model_3_ast_small_n3.csv"
+    output_path = "/home/nilo4793/media/models/ngram"
+    eval_path = "/home/nilo4793/media/AST/smaller/raw_files/small/eval"
+    data_path = "/home/nilo4793/media/AST/smaller/raw_files/small/train"
     #data_path = ""
-    corpus = "enc_java_n3"
+    corpus = "ast_small_n3"
     gen = 10
-    model = True
-    load_data = True
+    model = False
+    load_data = False
 
     if load_data:
         if data_path:
