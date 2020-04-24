@@ -199,10 +199,10 @@ if __name__ == "__main__":
     print(pred)
     # evaluate
     eval = load_text(eval_path)
+    test_data = []    
     for item in eval:
         test = trigrams(item, pad_right=True, pad_left=True)
-    test_data = []
-    for w in test:
-        test_data.append(w)
+        for w in test:
+            test_data.append(w)
     print("perplexity: ", perplexity(m, test_data, model))
 
