@@ -50,7 +50,7 @@ def save_ngram(model, output_path, n, corpus_name):
     ''' save model '''
     print('saving')
     file = os.path.join(output_path, "model_{}_{}.csv".format(n, corpus_name))
-    with open(file, 'w+', encoding='UTF-8', errors='replace', newline='') as csv_file:
+    with open(file, 'w+', encoding='UTF-8', errors='replace', newline='', delimiter='\t', quoting=csv.QUOTE_NONE, quotechar='',escapechar='\') as csv_file:
         csvwriter = csv.writer(csv_file, delimiter='\t')
         for w1_w2 in model:
             for w3 in model[w1_w2]:
@@ -124,9 +124,9 @@ def model_ngram(n, data):
     model = defaultdict(lambda: defaultdict(lambda: 0))
 
     # Count frequency of co-occurance
-    for sentence in data:
-        for w1, w2, w3 in trigrams(sentence, pad_right=True, pad_left=True):
-            model[(w1, w2)][w3] += 1
+    #for sentence in data:
+    for w1, w2, w3 in trigrams(data, pad_right=True, pad_left=True):
+        model[(w1, w2)][w3] += 1
 
     # Let's transform the counts to probabilities
     for w1_w2 in model:
@@ -142,17 +142,22 @@ def evaluate(model, text, iscount):
 
 
 def logscore(model, word, context):
-    if model[context][word] == 0:
+    try:
+        if word is None:
+            return 0
+        if model[context][word] == 0:
+            return 0
+        else:
+            return math.log2(model[context][word])
+    except KeyError as e:
         return 0
-    else:
-        return math.log2(model[context][word])
 
 
 def entropy(model, ngrams, iscount):
     if iscount:
         x = [logscore(model, ngram[-1], ngram[:-1]) for ngram in ngrams]
     else:
-        x = [logscore(model, ngram[-1], str(tuple(ngram[:-1]))) for ngram in ngrams]
+        x = [logscore(model, str(ngram[-1]), str(ngram[:-1])) for ngram in ngrams]
     mean = sum(x)/len(x)
     return -1*mean
 
@@ -178,7 +183,7 @@ if __name__ == "__main__":
             data = load_text(data_path)
         else:
             data = nltk.corpus.gutenberg.sents('austen-emma.txt')
-
+        data = list(chain.from_iterable(data))
     if not model:
         m = load_ngram(input_path)
         now = datetime.datetime.now()
@@ -199,10 +204,10 @@ if __name__ == "__main__":
     print(pred)
     # evaluate
     eval = load_text(eval_path)
+    eval = list(chain.from_iterable(eval))
     test_data = []    
-    for item in eval:
-        test = trigrams(item, pad_right=True, pad_left=True)
-        for w in test:
-            test_data.append(w)
+    test = trigrams(item, pad_right=True, pad_left=True)
+    for w in test:
+        test_data.append(w)
     print("perplexity: ", perplexity(m, test_data, model))
 
