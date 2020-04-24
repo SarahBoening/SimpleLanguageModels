@@ -108,7 +108,7 @@ def predict(model, is_count, text, max_len):
                 accumulator += model[str(tuple(text[-2:]))][word]
                 # select words that are above the probability threshold
                 if accumulator >= r:
-                    #text.append(word)
+                    text.append(word)
                     break
         # if text[-2:] == [None, None]:
         # sentence_finished = True
@@ -148,14 +148,17 @@ def logscore(model, word, context):
         return math.log2(model[context][word])
 
 
-def entropy(model, ngrams):
-    x = [logscore(model, ngram[-1], ngram[:-1]) for ngram in ngrams]
+def entropy(model, ngrams, iscount):
+    if iscount:
+        x = [logscore(model, ngram[-1], ngram[:-1]) for ngram in ngrams]
+    else:
+        x = [logscore(model, ngram[-1], str(tuple(ngram[:-1]))) for ngram in ngrams]
     mean = sum(x)/len(x)
     return -1*mean
 
 
-def perplexity(model, ngrams):
-    return pow(2.0, entropy(model, ngrams))
+def perplexity(model, ngrams, iscount):
+    return pow(2.0, entropy(model, ngrams, iscount))
 
 
 if __name__ == "__main__":
@@ -187,9 +190,9 @@ if __name__ == "__main__":
         now = datetime.datetime.now()
         print("modeling: ", now-start)
         save_ngram(m, output_path, n, corpus)
-
-    now = datetime.datetime.now()
-    print("with saving:", now-start)
+        now = datetime.datetime.now()
+        print("with saving:", now-start)
+    
     start = ["public", "static"]
     #start = [None, None]
     pred = predict(m, model, start, gen)
@@ -201,5 +204,5 @@ if __name__ == "__main__":
     test_data = []
     for w in test:
         test_data.append(w)
-    print("perplexity: ", perplexity(m, test_data))
+    print("perplexity: ", perplexity(m, test_data, model))
 
