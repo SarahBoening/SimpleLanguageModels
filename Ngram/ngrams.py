@@ -152,7 +152,7 @@ def entropy(model, ngrams, iscount):
     if iscount:
         x = [logscore(model, ngram[-1], ngram[:-1]) for ngram in ngrams]
     else:
-        x = [logscore(model, ngram[-1], str(tuple(ngram[:-1]))) for ngram in ngrams]
+        x = [logscore(model, str(ngram[-1]), str(tuple(ngram[:-1]))) for ngram in ngrams]
     mean = sum(x)/len(x)
     return -1*mean
 
@@ -193,8 +193,8 @@ if __name__ == "__main__":
         now = datetime.datetime.now()
         print("with saving:", now-start)
     
-    start = ["public", "static"]
-    #start = [None, None]
+    #start = ["public", "static"]
+    start = [None, None]
     pred = predict(m, model, start, gen)
     print(pred)
     # evaluate
