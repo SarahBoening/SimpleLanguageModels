@@ -198,8 +198,8 @@ if __name__ == "__main__":
         now = datetime.datetime.now()
         print("with saving:", now-start)
     
-    start = ["public", "static"]
-    #start = [None, None]
+    #start = ["public", "static"]
+    start = [None, None]
     pred = predict(m, model, start, gen)
     print(pred)
     # evaluate
