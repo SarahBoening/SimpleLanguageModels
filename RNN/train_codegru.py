@@ -91,8 +91,8 @@ def get_zero_pad(line, i, max_len, batch_size):
     a = line[:i+1]
     b = line[1:i+2]
     max_y = int(np.ceil((len(a)+zeros) / batch_size))
-    x = np.zeros((batch_size, 256))
-    y = np.zeros((batch_size, 256))
+    x = np.zeros((batch_size, max_y))
+    y = np.zeros((batch_size, max_y))
     k = 0
     stop = False
     for i in range(x.shape[0]):
@@ -241,8 +241,8 @@ def main():
         reset_every = 20000
         all_losses = []
         j = 0
-        ep_av = 0
-        line_av = 0
+        ep_av = datetime.timedelta(0)
+        line_av = datetime.timedelta(0)
         for e in range(args.epochs):
             ep_start = datetime.datetime.now()
             state_h = net.zero_state(args.batch_size)
@@ -306,10 +306,10 @@ def main():
                         plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png'.format(iteration)))
                         plt.close()
             
-                    line_av = (datetime.datetime.now() - now) / (k+1)
-            print("line average: ", line_av)
+                    line_av += (datetime.datetime.now() - now) / (k+1)
+                    print("line average: ", line_av)
             ep_av += (datetime.datetime.now() - ep_start) /(e+1)
-        print("epoch average: ", ep_av)
+            print("epoch average: ", ep_av)
         # save model after training
         torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
         print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
