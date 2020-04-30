@@ -7,7 +7,7 @@ import random
 import datetime
 import math
 # based on: https://nlpforhackers.io/language-models/
-
+from itertools import chain
 
 def load_text(path):
     ''' loads all .raw files from path'''
@@ -50,8 +50,8 @@ def save_ngram(model, output_path, n, corpus_name):
     ''' save model '''
     print('saving')
     file = os.path.join(output_path, "model_{}_{}.csv".format(n, corpus_name))
-    with open(file, 'w+', encoding='UTF-8', errors='replace', newline='', delimiter='\t', quoting=csv.QUOTE_NONE, quotechar='',escapechar='\') as csv_file:
-        csvwriter = csv.writer(csv_file, delimiter='\t')
+    with open(file, 'w+', encoding='UTF-8', errors='replace', newline='') as csv_file:
+        csvwriter = csv.writer(csv_file, delimiter='\t', quoting=csv.QUOTE_NONE, quotechar='',escapechar='\\')
         for w1_w2 in model:
             for w3 in model[w1_w2]:
                 csvwriter.writerow([w1_w2, w3, model[w1_w2][w3]])
@@ -170,10 +170,11 @@ if __name__ == "__main__":
     start = datetime.datetime.now()
     input_path = "/home/nilo4793/media/models/ngram/model_3_ast_small_n3.csv"
     output_path = "/home/nilo4793/media/models/ngram"
-    eval_path = "/home/nilo4793/media/AST/smaller/raw_files/small/eval"
-    data_path = "/home/nilo4793/media/AST/smaller/raw_files/small/train"
-    #data_path = ""
-    corpus = "ast_small_n3"
+    #eval_path = "/home/nilo4793/media/AST/smaller/raw_files/small/eval"
+    eval_path="/home/nilo4793/media/scenario/ast/eval/"
+    #data_path = "/home/nilo4793/media/AST/smaller/raw_files/small/train"
+    data_path = "/home/nilo4793/"
+    corpus = "scenario_ast_n3"
     gen = 10
     model = False
     load_data = False
@@ -206,7 +207,7 @@ if __name__ == "__main__":
     eval = load_text(eval_path)
     eval = list(chain.from_iterable(eval))
     test_data = []    
-    test = trigrams(item, pad_right=True, pad_left=True)
+    test = trigrams(eval, pad_right=True, pad_left=True)
     for w in test:
         test_data.append(w)
     print("perplexity: ", perplexity(m, test_data, model))

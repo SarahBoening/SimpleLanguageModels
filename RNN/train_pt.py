@@ -20,8 +20,9 @@ parser = argparse.ArgumentParser(description='Baseline GRU model')
 
 parser.add_argument("--train_file", type=str, default="E:\\PyCharm Projects\\Master\\tokenized_0000.java_github_5k.raw",
                     help="input dir of data")
-parser.add_argument("--eval_file", type=str, default="E:\\PyCharm Projects\\Master\\tokenized_0000.java_github_5k.raw",
+parser.add_argument("--eval_file", type=str, default="/home/nilo4793/media/scenario/java/eval",
                     help="input dir of eval data")
+
 parser.add_argument("--output_name", type=str, default="lstm_BPE_Test", help="Name of the model")
 parser.add_argument("--checkpoint_path", type=str, default="./output/", help="output path for the model")
 parser.add_argument("--vocab_path", type=str, default="E:\\PyCharm Projects\\Master\\vocab_nltk.txt",
@@ -314,8 +315,8 @@ def main():
                         args.embedding_size, args.lstm_size, args.dropout)
 
         # load weights from embedding trained model
-        net = torch.load(args.model_path, map_location=device)
-
+        net.load_state_dict(torch.load(args.model_path, map_location=device))
+        #net = torch.load(args.model_path, map_location=device)
         net = net.to(device)
         print("done")
 
@@ -324,9 +325,10 @@ def main():
             args.eval_file, args.batch_size, args.seq_size, tokenizer)
         criterion, optimizer = get_loss_and_train_op(net, 0.001)
         perpl = evaluate(net, in_text, out_text, device, args, criterion)
+        print(perpl)
         file = os.path.join(args.checkpoint_path, args.output_name+"_eval.txt")
         with open(file, "w+") as f:
-            f.write("perplexity: {}".format(perpl))
+            f.write(" model: {}\nperplexity: {}".format(os.path.basedir(args.model_path), perpl))
 
     if args.do_predict:
         predict(device, net, args.initial_words, tokenizer.get_vocab_len(), tokenizer, top_k=5)

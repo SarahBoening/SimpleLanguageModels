@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import Tokenizer.tokenizer as tok
 from itertools import chain
+import datetime
 
 parser = argparse.ArgumentParser(description='CodeGRU model')
 
@@ -33,7 +34,7 @@ parser.add_argument("--model_path", type=str, default="", help="path to trained 
 parser.add_argument("--gpu_ids", type=int, default=0, help="IDs of GPUs to be used if available")
 parser.add_argument("--epochs", type=int, default=100, help="No ofs epochs")
 parser.add_argument("--seq_size", type=int, default=32, help="")
-parser.add_argument("--batch_size", type=int, default=32, help="Size of batches")
+parser.add_argument("--batch_size", type=int, default=64, help="Size of batches")
 parser.add_argument("--embedding_size", type=int, default=300, help="Embedding size for GRU network")
 parser.add_argument("--gru_size", type=int, default=300, help="GRU size")
 parser.add_argument("--dropout", type=float, default=0.25, help="GRU size")
@@ -41,8 +42,8 @@ parser.add_argument("--gradients_norm", type=int, default=5, help="Gradient norm
 parser.add_argument("--initial_words", type=str, default="I, am",
                     help="string seperated by commas for list of initial words to predict further")
 parser.add_argument("--do_predict", type=bool, default=False, help="should network predict at the end")
-parser.add_argument("--do_train", type=bool, default=False, help="should network train")
-parser.add_argument("--do_eval", type=bool, default=True, help="should network evaluate")
+parser.add_argument("--do_train", type=bool, default=True, help="should network train")
+parser.add_argument("--do_eval", type=bool, default=False, help="should network evaluate")
 parser.add_argument("--do_finetune", type=bool, default=False, help="should network finetune, do_train has to be true")
 parser.add_argument("--predict_top_k", type=int, default=5, help="Top k prediction")
 parser.add_argument("--save_step", type=int, default=1000, help="steps to check loss and perpl")
@@ -240,13 +241,17 @@ def main():
         reset_every = 20000
         all_losses = []
         j = 0
+        ep_av = 0
+        line_av = 0
         for e in range(args.epochs):
+            ep_start = datetime.datetime.now()
             state_h = net.zero_state(args.batch_size)
             state_h = state_h.to(device)
-            for line in in_text:
+            for k, line in enumerate(in_text):
+                now = datetime.datetime.now()
                 max_len = len(line)
                 for i in range(max_len-1):
-                    x, y = get_zero_pad(line, i, max_line, args.batch_size)
+                    x, y = get_zero_pad(line, i, max_len, args.batch_size)
                     iteration += 1
                     j += 1
                     net.train()
@@ -300,6 +305,11 @@ def main():
                         plt.plot(all_losses)
                         plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png'.format(iteration)))
                         plt.close()
+            
+                    line_av = (datetime.datetime.now() - now) / (k+1)
+            print("line average: ", line_av)
+            ep_av += (datetime.datetime.now() - ep_start) /(e+1)
+        print("epoch average: ", ep_av)
         # save model after training
         torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
         print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))

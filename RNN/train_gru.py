@@ -186,9 +186,14 @@ def evaluate(model, in_text, out_text, device, args, criterion):
             loss = criterion(output.transpose(1, 2), y).item()
             total_loss += loss
             nb_eval_steps += 1
+            l = total_loss / nb_eval_steps
+            p = math.exp(l)
+    #print(total_loss)
+    #print(nb_eval_steps)
     total_loss = total_loss / nb_eval_steps
     perplexity2 = math.exp(total_loss)
     return perplexity2
+    #return p
 
 def main():
     args = parser.parse_args()
@@ -307,7 +312,7 @@ def main():
 
         # load weights from embedding trained model
         net.load_state_dict(torch.load(args.model_path, map_location=device))
-
+        #net = torch.load(args.model_path, map_location=device)
         net = net.to(device)
         print("done")
 
