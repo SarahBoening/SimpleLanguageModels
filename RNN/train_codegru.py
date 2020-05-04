@@ -42,8 +42,8 @@ parser.add_argument("--gradients_norm", type=int, default=5, help="Gradient norm
 parser.add_argument("--initial_words", type=str, default="I, am",
                     help="string seperated by commas for list of initial words to predict further")
 parser.add_argument("--do_predict", type=bool, default=False, help="should network predict at the end")
-parser.add_argument("--do_train", type=bool, default=True, help="should network train")
-parser.add_argument("--do_eval", type=bool, default=False, help="should network evaluate")
+parser.add_argument("--do_train", type=bool, default=False, help="should network train")
+parser.add_argument("--do_eval", type=bool, default=True, help="should network evaluate")
 parser.add_argument("--do_finetune", type=bool, default=False, help="should network finetune, do_train has to be true")
 parser.add_argument("--predict_top_k", type=int, default=5, help="Top k prediction")
 parser.add_argument("--save_step", type=int, default=1000, help="steps to check loss and perpl")
@@ -307,7 +307,7 @@ def main():
                         plt.close()
             
                     line_av += (datetime.datetime.now() - now) / (k+1)
-                    print("line average: ", line_av)
+            print("line average: ", line_av)
             ep_av += (datetime.datetime.now() - ep_start) /(e+1)
             print("epoch average: ", ep_av)
         # save model after training
