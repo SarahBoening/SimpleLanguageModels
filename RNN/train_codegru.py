@@ -113,7 +113,7 @@ def get_zero_pad(line, i, max_len, batch_size):
 
 def make_batches(int_text, args):
     print("building input and output vectors..")
-    int_text = chain.from_iterable(int_text)
+    int_text = list(chain.from_iterable(int_text))
     num_batches = int(len(int_text) / (args.seq_size * args.batch_size))
     in_text = int_text[:num_batches * args.batch_size * args.seq_size]
     out_text = np.zeros_like(in_text)
@@ -198,17 +198,24 @@ def evaluate(model, in_text, out_text, device, args, criterion):
     state_h = model.zero_state(args.batch_size)
     state_h = state_h.to(device)
     # get data
-    batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
+    #batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
     total_loss = 0.
     nb_eval_steps = 0
     with torch.no_grad():
-        for x, y in batches:
-            x = torch.tensor(x, dtype=torch.int64).to(device)
-            y = torch.tensor(y, dtype=torch.int64).to(device)
-            output, state_h = model(x, state_h)
-            loss = criterion(output.transpose(1, 2), y).item()
-            total_loss += loss
-            nb_eval_steps += 1
+        for k, line in enumerate(in_text):
+                max_len = len(line)
+                for i in range(max_len-1):
+                    x, y = get_zero_pad(line, i, max_len, args.batch_size)
+                    x = x.to(device)
+                    y = y.to(device)
+                    logits, state_h = net(x, state_h)
+                    loss = criterion(logits.transpose(1, 2), y)
+                    loss_value = loss.item()
+                    total_loss += loss_value
+                    nb_eval_steps += 1
+                if k % 1000 == 0:
+                    l = total_loss / nb_eval_steps
+                    print(k, ", ", math.exp(l))
     total_loss = total_loss / nb_eval_steps
     perplexity2 = math.exp(total_loss)
     return perplexity2
