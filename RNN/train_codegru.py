@@ -192,7 +192,7 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
     print(' '.join(words).encode('utf-8'))
 
 
-def evaluate(model, in_text, out_text, device, args, criterion):
+def evaluate(model, in_text, device, args, criterion):
     model.eval()
     total_loss = 0.
     state_h = model.zero_state(args.batch_size)
@@ -355,9 +355,9 @@ def main():
     if args.do_eval:
         n_vocab, in_text, max_line = get_data_from_file(
             args.eval_file, tokenizer)
-        in_text, out_text = make_batches(in_text, args)
+        #in_text, out_text = make_batches(in_text, args)
         criterion, optimizer = get_loss_and_train_op(net, 0.001)
-        perpl = evaluate(net, in_text, out_text, device, args, criterion)
+        perpl = evaluate(net, in_text, device, args, criterion)
         file = os.path.join(args.checkpoint_path, args.output_name+"_eval.txt")
         with open(file, "w+") as f:
             f.write("perplexity: ", perpl)
