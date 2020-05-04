@@ -110,6 +110,21 @@ def get_zero_pad(line, i, max_len, batch_size):
     y = torch.tensor(y, dtype=torch.int64)
     return x, y
 
+
+def make_batches(int_text, args):
+    print("building input and output vectors..")
+    num_batches = int(len(int_text) / (args.seq_size * args.batch_size))
+    in_text = int_text[:num_batches * args.batch_size * args.seq_size]
+    out_text = np.zeros_like(in_text)
+    out_text[:-1] = in_text[1:]
+    out_text[-1] = in_text[0]
+    in_text = np.reshape(in_text, (args.batch_size, -1))
+    out_text = np.reshape(out_text, (args.batch_size, -1))
+    print("done")
+    print(in_text[:5])
+    return in_text, out_text
+
+
 def get_batches(in_text, out_text, batch_size, seq_size):
     num_batches = np.prod(in_text.shape) // (seq_size * batch_size)
     for i in range(0, num_batches * seq_size, seq_size):
@@ -138,6 +153,7 @@ class RNNModule(nn.Module):
 
     def zero_state(self, batch_size):
         return torch.zeros(1, batch_size, self.gru_size)
+
 
 def get_loss_and_train_op(net, lr=0.001):
     criterion = nn.CrossEntropyLoss()
@@ -182,7 +198,6 @@ def evaluate(model, in_text, out_text, device, args, criterion):
     state_h = state_h.to(device)
     # get data
     batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
-    eval_loss = 0.
     total_loss = 0.
     nb_eval_steps = 0
     with torch.no_grad():
@@ -330,8 +345,9 @@ def main():
         print("done")
 
     if args.do_eval:
-        n_vocab, in_text, out_text = get_data_from_file(
-            args.eval_file, args.batch_size, args.seq_size, tokenizer)
+        n_vocab, in_text, max_line = get_data_from_file(
+            args.eval_file, tokenizer)
+        in_text, out_text = make_batches(in_text, args)
         criterion, optimizer = get_loss_and_train_op(net, 0.001)
         perpl = evaluate(net, in_text, out_text, device, args, tokenizer, criterion)
         file = os.path.join(args.checkpoint_path, args.output_name+"_eval.txt")
