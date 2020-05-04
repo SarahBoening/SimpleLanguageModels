@@ -113,6 +113,7 @@ def get_zero_pad(line, i, max_len, batch_size):
 
 def make_batches(int_text, args):
     print("building input and output vectors..")
+    int_text = chain.from_iterable(int_text)
     num_batches = int(len(int_text) / (args.seq_size * args.batch_size))
     in_text = int_text[:num_batches * args.batch_size * args.seq_size]
     out_text = np.zeros_like(in_text)
@@ -349,7 +350,7 @@ def main():
             args.eval_file, tokenizer)
         in_text, out_text = make_batches(in_text, args)
         criterion, optimizer = get_loss_and_train_op(net, 0.001)
-        perpl = evaluate(net, in_text, out_text, device, args, tokenizer, criterion)
+        perpl = evaluate(net, in_text, out_text, device, args, criterion)
         file = os.path.join(args.checkpoint_path, args.output_name+"_eval.txt")
         with open(file, "w+") as f:
             f.write("perplexity: ", perpl)
