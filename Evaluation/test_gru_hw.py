@@ -131,6 +131,12 @@ if __name__ == "__main__":
     embed_size = 300
     gru_size = 300
     dropout = 0.25
+
+    # openvocab
+    seq_size = 200
+    embed_size = 512
+    gru_size = 512
+    dropout = 0.5
     '''
     max_samples = 100000
     torch.manual_seed(66)
