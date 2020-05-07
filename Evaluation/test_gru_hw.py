@@ -91,17 +91,20 @@ def get_examples(liste, tokenizer, max_samples, type="normal"):
             result.append(tokenizer.convert_tokens_to_ids(lines[rand - 4:rand + 4]))
 
     else:
-        for line in liste:
-            line = line.lstrip()
+        for j in range(100):
             if len(result) >= max_samples:
                 break
-            if line.startswith("/") or line.startswith("*") or line.startswith("import") or line.startswith(
-                    "package") or line.startswith("@") or line.startswith("[") or "CLS" in line or "SEP" in line:
-                pass
-            else:
-                tok_line = tokenizer.convert_tokens_to_ids(tokenizer._tokenize(line))
-                if 2 < len(tok_line) < 1024:
-                    result.append(tok_line)
+            for line in liste:
+                line = line.lstrip()
+                if len(result) >= max_samples:
+                    break
+                if line.startswith("/") or line.startswith("*") or line.startswith("import") or line.startswith(
+                        "package") or line.startswith("@") or line.startswith("[") or "CLS" in line or "SEP" in line:
+                    pass
+                else:
+                    tok_line = tokenizer.convert_tokens_to_ids(tokenizer._tokenize(line))
+                    if 2 < len(tok_line) < 1024:
+                        result.append(tok_line)
 
     return result
 
@@ -112,13 +115,13 @@ if __name__ == "__main__":
     proc = psutil.Process(pid)
     # UP NEXT: CODEGRU JAVA GLOBAL, ScenJava, ScenAst
     # UP NEXT: OPENVOCAB Java, AST, ScenAST, ScenJava (ENC)
-    in_path = "/home/nilo4793/media/models/gru/best_checkpoint-gru_ast_enc-1.0965386178338872.pth"
+    in_path = "/home/nilo4793/media/models/gru/best_gru_java_small.pth"
     out_path = "/home/nilo4793/media/Evaluation/"
-    file_name = "gru_ast_enc_hw"
-    # vocab_path = "G:\\MASTER\\raw_files\\CodeGru\\java\\vocab_nltk.txt"
-    vocab_path = "/home/nilo4793/Documents/Thesis/BPE/vocab_bpe.txt"
-    # data_path = "G:\\MASTER\\raw_files\\CodeGru\\java\\eval\\"
-    data_path = "/home/nilo4793/Documents/Thesis/BPE/tempast"
+    file_name = "gru_java_hw"
+    vocab_path = "/home/nilo4793/media/Split_Corpus/smaller/small/vocab_nltk.txt"
+    # vocab_path = "/home/nilo4793/Documents/Thesis/BPE/bpe_java_vocab.txt"
+    data_path = "/home/nilo4793/media/Split_Corpus/smaller/small/eval/"
+    # data_path = "/home/nilo4793/Documents/Thesis/BPE/temp"
 
     # normal gru
     seq_size = 32
@@ -138,7 +141,7 @@ if __name__ == "__main__":
     gru_size = 512
     dropout = 0.5
     '''
-    max_samples = 100000
+    max_samples = 10000
     torch.manual_seed(66)
     random.seed(66)
 
@@ -146,7 +149,7 @@ if __name__ == "__main__":
 
     eval_files = get_data_from_file(data_path, tokenizer)
     random.shuffle(eval_files)
-    tests = get_examples(eval_files, tokenizer, max_samples, "enc")
+    tests = get_examples(eval_files, tokenizer, max_samples, "normal")
     print(len(tests))
     model = RNNModule(tokenizer.get_vocab_len(), seq_size, embed_size, gru_size, dropout)
     is_cuda = torch.cuda.is_available()
@@ -156,7 +159,7 @@ if __name__ == "__main__":
     else:
         dev = "cpu"
     model.load_state_dict(torch.load(in_path, map_location=device))
-    # model = torch.load(in_path, map_location=device)
+    #model = torch.load(in_path, map_location=device)
     model.to(device)
     criterion, optimizer = get_loss_and_train_op(model, 0.001)
     # predict
@@ -166,7 +169,7 @@ if __name__ == "__main__":
     gpu = 0.
     dest = os.path.join(out_path, file_name + "_" + dev + ".txt")
     for i, toks in enumerate(tests):
-        if i % 10000 == 0:
+        if i % 1000 == 0:
             print("progress: ", i, "/ ", max_samples)
         start = datetime.datetime.now()
         idx = random.randint(1, len(toks) - 1)

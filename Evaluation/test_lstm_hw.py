@@ -11,7 +11,6 @@ import numpy as np
 import Tokenizer.tokenizer as tokenizer
 import random
 import datetime
-import LoadWatcher
 import parse_nvidia_smi as gpuutil
 
 class RNNModule(nn.Module):
@@ -91,16 +90,19 @@ def get_examples(liste, tokenizer, max_samples, type="normal"):
             result.append(tokenizer.convert_tokens_to_ids(lines[rand-4:rand+4]))
 
     else:
-        for line in liste:
-            line = line.lstrip()
+        for j in range(100):
             if len(result) >= max_samples:
                 break
-            if line.startswith("/") or line.startswith("*") or line.startswith("import") or line.startswith("package") or line.startswith("@") or line.startswith("[") or "CLS" in line or "SEP" in line:
-                pass
-            else:
-                tok_line = tokenizer.convert_tokens_to_ids(tokenizer._tokenize(line))
-                if 2 < len(tok_line) < 1024:
-                    result.append(tok_line)
+            for line in liste:
+                line = line.lstrip()
+                if len(result) >= max_samples:
+                    break
+                if line.startswith("/") or line.startswith("*") or line.startswith("import") or line.startswith("package") or line.startswith("@") or line.startswith("[") or "CLS" in line or "SEP" in line:
+                    pass
+                else:
+                    tok_line = tokenizer.convert_tokens_to_ids(tokenizer._tokenize(line))
+                    if 2 < len(tok_line) < 1024:
+                        result.append(tok_line)
 
     return result
 
@@ -110,13 +112,14 @@ if __name__ == "__main__":
     print(pid)
     proc = psutil.Process(pid)
     # UP NEXT: GRU EncJava, EncAst
-    in_path = "/home/nilo4793/media/models/lstm/best_checkpoint-lstm_ast_enc-1.1009459553227503.pth"
+    in_path = "/home/nilo4793/media/models/lstm/best_lstm_java_small.pth"
     out_path = "/home/nilo4793/media/Evaluation/"
-    file_name = "lstm_ast_enc_hw"
-    vocab_path = "/home/nilo4793/Documents/Thesis/BPE/vocab_bpe.txt"
-    #vocab_path = "G:\\MASTER\\raw_files\\AST\\small\\vocab\\vocab.txt"
-    data_path = "/home/nilo4793/Documents/Thesis/BPE/tempast"
-    #data_path = "G:\\MASTER\\scenario\\raw_files\\ast\\eval\\"
+    file_name = "lstm_java_hw"
+    #vocab_path = "/home/nilo4793/Documents/Thesis/BPE/bpe_java_vocab.txt"
+    vocab_path = "/home/nilo4793/media/Split_Corpus/smaller/small/vocab_nltk.txt"
+    #data_path = "/home/nilo4793/Documents/Thesis/BPE/temp"
+    data_path = "/home/nilo4793/media/Split_Corpus/smaller/small/eval"
+    mode = "normal"
     seq_size = 32
     embed_size = 64
     gru_size = 64
@@ -130,7 +133,7 @@ if __name__ == "__main__":
     eval_files = get_data_from_file(data_path, tokenizer)
     random.shuffle(eval_files)
 
-    tests = get_examples(eval_files, tokenizer, max_samples, "normal")
+    tests = get_examples(eval_files, tokenizer, max_samples, mode)
     print(len(tests))
     model = RNNModule(tokenizer.get_vocab_len(), seq_size, embed_size, gru_size, dropout)
     is_cuda = torch.cuda.is_available()
