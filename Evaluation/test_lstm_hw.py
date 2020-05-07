@@ -1,3 +1,6 @@
+import sys
+
+sys.path.append('../.')
 import os
 
 import psutil
@@ -5,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-import tokenizer
+import Tokenizer.tokenizer as tokenizer
 import random
 import datetime
 import LoadWatcher
@@ -107,13 +110,13 @@ if __name__ == "__main__":
     print(pid)
     proc = psutil.Process(pid)
     # UP NEXT: GRU EncJava, EncAst
-    in_path = "G:\\MASTER\\MODELS\\lstm\\scen_ast\\best_checkpoint-lstm_scen_ast-1.5503649761615155.pth"
-    out_path = "G:\\MASTER\\Evaluation\\"
+    in_path = "/home/nilo4793/media/models/lstm/best_checkpoint-lstm_ast_enc-1.1009459553227503.pth"
+    out_path = "/home/nilo4793/media/Evaluation/"
     file_name = "lstm_ast_enc_hw"
-    #vocab_path = "G:\\MASTER\\raw_files\\AST\\small\\bpe_ast\\useful\\vocab_bpe.txt"
-    vocab_path = "G:\\MASTER\\raw_files\\AST\\small\\vocab\\vocab.txt"
-    #data_path = "G:\\MASTER\\raw_files\\AST\\small\\bpe_ast\\useful\\temp\\"
-    data_path = "G:\\MASTER\\scenario\\raw_files\\ast\\eval\\"
+    vocab_path = "/home/nilo4793/Documents/Thesis/BPE/vocab_bpe.txt"
+    #vocab_path = "G:\\MASTER\\raw_files\\AST\\small\\vocab\\vocab.txt"
+    data_path = "/home/nilo4793/Documents/Thesis/BPE/tempast"
+    #data_path = "G:\\MASTER\\scenario\\raw_files\\ast\\eval\\"
     seq_size = 32
     embed_size = 64
     gru_size = 64
@@ -153,8 +156,8 @@ if __name__ == "__main__":
         ground_truth = toks[idx]
         tok_x = toks[:idx]
         state_h, state_c = model.zero_state(1)
-        state_h.to(device)
-        state_c.to(device)
+        state_h = state_h.to(device)
+        state_c = state_c.to(device)
         for t in tok_x:
             ix = torch.LongTensor([[t]]).to(device)
             out, (state_h, state_c) = model(ix, (state_h, state_c))
