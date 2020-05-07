@@ -91,6 +91,8 @@ def get_zero_pad(line, i, max_len, batch_size):
     a = line[:i+1]
     b = line[1:i+2]
     max_y = int(np.ceil((len(a)+zeros) / batch_size))
+    if max_y > 2:
+        max_y = 2
     x = np.zeros((batch_size, max_y))
     y = np.zeros((batch_size, max_y))
     k = 0
@@ -208,7 +210,7 @@ def evaluate(model, in_text, device, args, criterion):
                     x, y = get_zero_pad(line, i, max_len, args.batch_size)
                     x = x.to(device)
                     y = y.to(device)
-                    logits, state_h = net(x, state_h)
+                    logits, state_h = model(x, state_h)
                     loss = criterion(logits.transpose(1, 2), y)
                     loss_value = loss.item()
                     total_loss += loss_value
@@ -358,9 +360,10 @@ def main():
         #in_text, out_text = make_batches(in_text, args)
         criterion, optimizer = get_loss_and_train_op(net, 0.001)
         perpl = evaluate(net, in_text, device, args, criterion)
+        print(perpl)
         file = os.path.join(args.checkpoint_path, args.output_name+"_eval.txt")
         with open(file, "w+") as f:
-            f.write("perplexity: ", perpl)
+            f.write("perplexity: {}".format(perpl))
 
     if args.do_predict:
         words = args.initial_words.split(",")

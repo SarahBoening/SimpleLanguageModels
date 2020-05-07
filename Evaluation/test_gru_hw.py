@@ -1,3 +1,6 @@
+import sys
+
+sys.path.append('../.')
 import os
 from itertools import chain
 
@@ -6,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-import tokenizer
+import Tokenizer.tokenizer as tokenizer
 import random
 import datetime
 from nltk.translate.bleu_score import sentence_bleu
@@ -109,13 +112,13 @@ if __name__ == "__main__":
     proc = psutil.Process(pid)
     # UP NEXT: CODEGRU JAVA GLOBAL, ScenJava, ScenAst
     # UP NEXT: OPENVOCAB Java, AST, ScenAST, ScenJava (ENC)
-    in_path = "G:\\MASTER\\MODELS\\gru\\ast_enc\\best_checkpoint-gru_ast_enc-1.0965386178338872.pth"
-    out_path = "G:\\MASTER\\Evaluation\\"
+    in_path = "/home/nilo4793/media/models/gru/best_checkpoint-gru_ast_enc-1.0965386178338872.pth"
+    out_path = "/home/nilo4793/media/Evaluation/"
     file_name = "gru_ast_enc_hw"
     # vocab_path = "G:\\MASTER\\raw_files\\CodeGru\\java\\vocab_nltk.txt"
-    vocab_path = "G:\\MASTER\\raw_files\\AST\\small\\bpe_ast\\useful\\vocab_bpe.txt"
+    vocab_path = "/home/nilo4793/Documents/Thesis/BPE/vocab_bpe.txt"
     # data_path = "G:\\MASTER\\raw_files\\CodeGru\\java\\eval\\"
-    data_path = "G:\\MASTER\\raw_files\\AST\\small\\bpe_ast\\useful\\temp\\"
+    data_path = "/home/nilo4793/Documents/Thesis/BPE/tempast"
 
     # normal gru
     seq_size = 32
@@ -164,7 +167,7 @@ if __name__ == "__main__":
         ground_truth = toks[idx]
         tok_x = toks[:idx]
         state_h = model.zero_state(1)
-        state_h.to(device)
+        state_h = state_h.to(device)
         for t in tok_x:
             ix = torch.LongTensor([[t]]).to(device)
             out, state_h = model(ix, state_h)
