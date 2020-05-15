@@ -42,8 +42,8 @@ parser.add_argument("--gradients_norm", type=int, default=5, help="Gradient norm
 parser.add_argument("--initial_words", type=str, default="I, am",
                     help="string seperated by commas for list of initial words to predict further")
 parser.add_argument("--do_predict", type=bool, default=False, help="should network predict at the end")
-parser.add_argument("--do_train", type=bool, default=True, help="should network train")
-parser.add_argument("--do_eval", type=bool, default=False, help="should network evaluate")
+parser.add_argument("--do_train", type=bool, default=False, help="should network train")
+parser.add_argument("--do_eval", type=bool, default=True, help="should network evaluate")
 parser.add_argument("--do_finetune", type=bool, default=False, help="should network finetune, do_train has to be true")
 parser.add_argument("--predict_top_k", type=int, default=5, help="Top k prediction")
 parser.add_argument("--save_step", type=int, default=3000, help="steps to check loss and perpl")
@@ -112,6 +112,22 @@ def get_zero_pad(line, i, max_len, batch_size):
     y = torch.tensor(y, dtype=torch.int64)
     return x, y
 
+
+def make_batches(int_text, args):
+    print("building input and output vectors..")
+    int_text = list(chain.from_iterable(int_text))
+    num_batches = int(len(int_text) / (args.seq_size * args.batch_size))
+    in_text = int_text[:num_batches * args.batch_size * args.seq_size]
+    out_text = np.zeros_like(in_text)
+    out_text[:-1] = in_text[1:]
+    out_text[-1] = in_text[0]
+    in_text = np.reshape(in_text, (args.batch_size, -1))
+    out_text = np.reshape(out_text, (args.batch_size, -1))
+    print("done")
+    print(in_text[:5])
+    return in_text, out_text
+
+
 def get_batches(in_text, out_text, batch_size, seq_size):
     num_batches = np.prod(in_text.shape) // (seq_size * batch_size)
     for i in range(0, num_batches * seq_size, seq_size):
@@ -140,6 +156,7 @@ class RNNModule(nn.Module):
 
     def zero_state(self, batch_size):
         return torch.zeros(1, batch_size, self.gru_size)
+
 
 def get_loss_and_train_op(net, lr=0.001):
     criterion = nn.CrossEntropyLoss()
@@ -177,24 +194,30 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
     print(' '.join(words).encode('utf-8'))
 
 
-def evaluate(model, in_text, out_text, device, args, criterion):
+def evaluate(model, in_text, device, args, criterion):
     model.eval()
     total_loss = 0.
     state_h = model.zero_state(args.batch_size)
     state_h = state_h.to(device)
     # get data
-    batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
-    eval_loss = 0.
+    #batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
     total_loss = 0.
     nb_eval_steps = 0
     with torch.no_grad():
-        for x, y in batches:
-            x = torch.tensor(x, dtype=torch.int64).to(device)
-            y = torch.tensor(y, dtype=torch.int64).to(device)
-            output, state_h = model(x, state_h)
-            loss = criterion(output.transpose(1, 2), y).item()
-            total_loss += loss
-            nb_eval_steps += 1
+        for k, line in enumerate(in_text):
+                max_len = len(line)
+                for i in range(max_len-1):
+                    x, y = get_zero_pad(line, i, max_len, args.batch_size)
+                    x = x.to(device)
+                    y = y.to(device)
+                    logits, state_h = model(x, state_h)
+                    loss = criterion(logits.transpose(1, 2), y)
+                    loss_value = loss.item()
+                    total_loss += loss_value
+                    nb_eval_steps += 1
+                if k % 1000 == 0:
+                    l = total_loss / nb_eval_steps
+                    print(k, ", ", math.exp(l))
     total_loss = total_loss / nb_eval_steps
     perplexity2 = math.exp(total_loss)
     return perplexity2
@@ -309,6 +332,7 @@ def main():
                         #plt.close()
             
                 line_av += (datetime.datetime.now() - now) / (k+1)
+
             print("line average: ", line_av)
             ep_av += (datetime.datetime.now() - ep_start) /(e+1)
             print("epoch average: ", ep_av)
@@ -332,13 +356,15 @@ def main():
         print("done")
 
     if args.do_eval:
-        n_vocab, in_text, out_text = get_data_from_file(
-            args.eval_file, args.batch_size, args.seq_size, tokenizer)
+        n_vocab, in_text, max_line = get_data_from_file(
+            args.eval_file, tokenizer)
+        #in_text, out_text = make_batches(in_text, args)
         criterion, optimizer = get_loss_and_train_op(net, 0.001)
-        perpl = evaluate(net, in_text, out_text, device, args, tokenizer, criterion)
+        perpl = evaluate(net, in_text, device, args, criterion)
+        print(perpl)
         file = os.path.join(args.checkpoint_path, args.output_name+"_eval.txt")
         with open(file, "w+") as f:
-            f.write("perplexity: ", perpl)
+            f.write("perplexity: {}".format(perpl))
 
     if args.do_predict:
         words = args.initial_words.split(",")
