@@ -65,10 +65,10 @@ if __name__ == "__main__":
     print(pid)
     proc = psutil.Process(pid)
 
-    in_path = "G:\\MASTER\\MODELS\\GPT-2\\best_gpt2_small_ast\\"
-    out_path = "G:\\MASTER\\Evaluation\\"
-    file_name = "gpt2_ast_hw"
-    data_path = "G:\\MASTER\\raw_files\\AST\\small\\eval\\sicherungskopie\\"
+    in_path = "/home/nilo4793/media/models/gpt2/gpt2_scenario/_gpt2_scenario"
+    out_path = "/home/nilo4793/media/Evaluation/"
+    file_name = "gpt2_java_scen_hw"
+    data_path = "/home/nilo4793/media/scenario/java/eval"
     length = 1
     max_samples = 10000
     random.seed(66)

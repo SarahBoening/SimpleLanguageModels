@@ -81,10 +81,10 @@ if __name__ == "__main__":
     proc = psutil.Process(pid)
 
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    in_path = "G:\\MASTER\\MODELS\\BERT\\bert_ast_cp\\"
-    out_path = "G:\\MASTER\\Evaluation\\"
-    file_name = "bert_ast_glob_hw"
-    data_path = "G:\\MASTER\\raw_files\\AST\\small\\eval\\sicherungskopie\\"
+    in_path = "/home/nilo4793/media/models/bert/bert_scenario/bert_scenario"
+    out_path = "/home/nilo4793/media/Evaluation/"
+    file_name = "bert_java_scen_hw"
+    data_path = "/home/nilo4793/media/scenario/java/eval"
     max_samples = 10000
     random.seed(66)
     torch.manual_seed(66)

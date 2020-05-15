@@ -115,20 +115,20 @@ if __name__ == "__main__":
     proc = psutil.Process(pid)
     # UP NEXT: CODEGRU JAVA GLOBAL, ScenJava, ScenAst
     # UP NEXT: OPENVOCAB Java, AST, ScenAST, ScenJava (ENC)
-    in_path = "/home/nilo4793/media/models/openvocab/best_openvocab_java_small.pth"
+    in_path = "/home/nilo4793/media/models/codegru/best_checkpoint-codegru_java_small-1.016702960227314.pth"
     out_path = "/home/nilo4793/media/Evaluation/"
-    file_name = "openvocab_java_hw"
-    #vocab_path = "/home/nilo4793/media/CodeGru/AST/vocab_merge.txt"
-    vocab_path = "/home/nilo4793/Documents/Thesis/BPE/bpe_java_vocab.txt"
+    file_name = "codegru_java_hw"
+    vocab_path = "/home/nilo4793/media/CodeGru/java/vocab_nltk.txt"
+    #vocab_path = "/home/nilo4793/Documents/Thesis/BPE/vocab_bpe.txt"
     #data_path = "/home/nilo4793/media/CodeGru/AST/eval/"
-    data_path = "/home/nilo4793/Documents/Thesis/BPE/temp"
+    data_path = "/home/nilo4793/media/CodeGru/java/java/eval/"
     '''
     # normal gru
     seq_size = 32
     embed_size = 64
     gru_size = 64
     dropout = 0.5
-    
+    '''
     # codegru
     seq_size = 32
     embed_size = 300
@@ -136,11 +136,11 @@ if __name__ == "__main__":
     dropout = 0.25
     '''
     # openvocab
-    seq_size = 200
-    embed_size = 512
-    gru_size = 512
+    seq_size = 64
+    embed_size = 200
+    gru_size = 200
     dropout = 0.5
-    
+    '''
     max_samples = 10000
     torch.manual_seed(66)
     random.seed(66)
@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
     eval_files = get_data_from_file(data_path, tokenizer)
     random.shuffle(eval_files)
-    tests = get_examples(eval_files, tokenizer, max_samples, "enc")
+    tests = get_examples(eval_files, tokenizer, max_samples, "normal")
     print(len(tests))
     model = RNNModule(tokenizer.get_vocab_len(), seq_size, embed_size, gru_size, dropout)
     is_cuda = torch.cuda.is_available()
