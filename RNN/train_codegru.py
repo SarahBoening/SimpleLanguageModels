@@ -15,11 +15,14 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import Tokenizer.tokenizer as tok
 from itertools import chain
+import datetime
 
 parser = argparse.ArgumentParser(description='CodeGRU model')
 
 parser.add_argument("--train_file", type=str, default="E:\\PyCharm Projects\\Master\\tokenized_0000.java_github_5k.raw",
                     help="input dir of data")
+parser.add_argument("--eval_file", type=str, default="E:\\PyCharm Projects\\Master\\tokenized_0000.java_github_5k.raw",
+                    help="input dir of eval data")
 parser.add_argument("--output_name", type=str, default="gru_trump", help="Name of the model")
 parser.add_argument("--checkpoint_path", type=str, default="./output/", help="output path for the model")
 parser.add_argument("--vocab_path", type=str, default="E:\\PyCharm Projects\\Master\\vocab_nltk.txt",
@@ -109,6 +112,28 @@ def get_zero_pad(line, i, max_len, batch_size):
     y = torch.tensor(y, dtype=torch.int64)
     return x, y
 
+
+def make_batches(int_text, args):
+    print("building input and output vectors..")
+    int_text = list(chain.from_iterable(int_text))
+    num_batches = int(len(int_text) / (args.seq_size * args.batch_size))
+    in_text = int_text[:num_batches * args.batch_size * args.seq_size]
+    out_text = np.zeros_like(in_text)
+    out_text[:-1] = in_text[1:]
+    out_text[-1] = in_text[0]
+    in_text = np.reshape(in_text, (args.batch_size, -1))
+    out_text = np.reshape(out_text, (args.batch_size, -1))
+    print("done")
+    print(in_text[:5])
+    return in_text, out_text
+
+
+def get_batches(in_text, out_text, batch_size, seq_size):
+    num_batches = np.prod(in_text.shape) // (seq_size * batch_size)
+    for i in range(0, num_batches * seq_size, seq_size):
+        yield in_text[:, i:i + seq_size], out_text[:, i:i + seq_size]
+
+
 class RNNModule(nn.Module):
     def __init__(self, n_vocab, seq_size, embedding_size, gru_size, dropout):
         super(RNNModule, self).__init__()
@@ -131,6 +156,7 @@ class RNNModule(nn.Module):
 
     def zero_state(self, batch_size):
         return torch.zeros(1, batch_size, self.gru_size)
+
 
 def get_loss_and_train_op(net, lr=0.001):
     criterion = nn.CrossEntropyLoss()
@@ -168,21 +194,34 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
     print(' '.join(words).encode('utf-8'))
 
 
-def evaluate(model, args, tokenizer, criterion):
-    # TODO write evaluation
+def evaluate(model, in_text, device, args, criterion):
     model.eval()
     total_loss = 0.
     state_h = model.zero_state(args.batch_size)
+    state_h = state_h.to(device)
     # get data
-    data = []
-    y = ""
-    data_source = ""
+    #batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
+    total_loss = 0.
+    nb_eval_steps = 0
     with torch.no_grad():
-        # iterate over batches
-        # data = input, y = target
-        logits, state_h = model(data, state_h)
-        total_loss += len(data) * criterion(logits.transpose(1, 2), y).item()
-    return total_loss / (len(data_source) - 1)
+        for k, line in enumerate(in_text):
+                max_len = len(line)
+                for i in range(max_len-1):
+                    x, y = get_zero_pad(line, i, max_len, args.batch_size)
+                    x = x.to(device)
+                    y = y.to(device)
+                    logits, state_h = model(x, state_h)
+                    loss = criterion(logits.transpose(1, 2), y)
+                    loss_value = loss.item()
+                    total_loss += loss_value
+                    nb_eval_steps += 1
+                if k % 1000 == 0:
+                    l = total_loss / nb_eval_steps
+                    print(k, ", ", math.exp(l))
+    total_loss = total_loss / nb_eval_steps
+    perplexity2 = math.exp(total_loss)
+    return perplexity2
+
 
 
 def main():
@@ -227,10 +266,14 @@ def main():
         reset_every = 200000
         all_losses = []
         j = 0
+        ep_av = datetime.timedelta(0)
+        line_av = datetime.timedelta(0)
         for e in range(args.epochs):
+            ep_start = datetime.datetime.now()
             state_h = net.zero_state(args.batch_size)
             state_h = state_h.to(device)
-            for line in in_text:
+            for k, line in enumerate(in_text):
+                now = datetime.datetime.now()
                 max_len = len(line)
                 for i in range(max_len-1):
                     x, y = get_zero_pad(line, i, max_len, args.batch_size)
@@ -287,6 +330,15 @@ def main():
                         #plt.plot(all_losses)
                         #plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png'.format(iteration)))
                         #plt.close()
+<<<<<<< HEAD
+=======
+            
+                line_av += (datetime.datetime.now() - now) / (k+1)
+
+            print("line average: ", line_av)
+            ep_av += (datetime.datetime.now() - ep_start) /(e+1)
+            print("epoch average: ", ep_av)
+>>>>>>> 79cf106e9cd93ef654f5a7c15d37821ff15df71f
         # save model after training
         torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
         print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
@@ -298,16 +350,24 @@ def main():
     else:
         print("loading model and weights")
         net = RNNModule(tokenizer.get_vocab_len(), args.seq_size,
-                        args.embedding_size, args.lstm_size, args.dropout)
+                        args.embedding_size, args.gru_size, args.dropout)
 
         # load weights from embedding trained model
-        #net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
+        net.load_state_dict(torch.load(args.model_path, map_location=device), strict=False)
 
         net = net.to(device)
         print("done")
 
     if args.do_eval:
-        pass
+        n_vocab, in_text, max_line = get_data_from_file(
+            args.eval_file, tokenizer)
+        #in_text, out_text = make_batches(in_text, args)
+        criterion, optimizer = get_loss_and_train_op(net, 0.001)
+        perpl = evaluate(net, in_text, device, args, criterion)
+        print(perpl)
+        file = os.path.join(args.checkpoint_path, args.output_name+"_eval.txt")
+        with open(file, "w+") as f:
+            f.write("perplexity: {}".format(perpl))
 
     if args.do_predict:
         words = args.initial_words.split(",")

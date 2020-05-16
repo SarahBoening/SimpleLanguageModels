@@ -20,6 +20,9 @@ parser = argparse.ArgumentParser(description='Baseline GRU model')
 
 parser.add_argument("--train_file", type=str, default="E:\\PyCharm Projects\\Master\\tokenized_0000.java_github_5k.raw",
                     help="input dir of data")
+parser.add_argument("--eval_file", type=str, default="/home/nilo4793/media/scenario/java/eval",
+                    help="input dir of eval data")
+
 parser.add_argument("--output_name", type=str, default="lstm_BPE_Test", help="Name of the model")
 parser.add_argument("--checkpoint_path", type=str, default="./output/", help="output path for the model")
 parser.add_argument("--vocab_path", type=str, default="E:\\PyCharm Projects\\Master\\vocab_nltk.txt",
@@ -38,10 +41,10 @@ parser.add_argument("--dropout", type=float, default=0.5, help="GRU size")
 parser.add_argument("--gradients_norm", type=int, default=5, help="Gradient normalization")
 parser.add_argument("--initial_words", type=list, default=['public', 'class'],
                     help="List of initial words to predict further")
-parser.add_argument("--do_predict", type=bool, default=True, help="should network predict at the end")
-parser.add_argument("--do_train", type=bool, default=True, help="should network train")
+parser.add_argument("--do_predict", type=bool, default=False, help="should network predict at the end")
+parser.add_argument("--do_train", type=bool, default=False, help="should network train")
 parser.add_argument("--do_finetune", type=bool, default=False, help="should network finetune, do_train has to be true")
-parser.add_argument("--do_eval", type=bool, default=False, help="should network evaluate")
+parser.add_argument("--do_eval", type=bool, default=True, help="should network evaluate")
 parser.add_argument("--predict_top_k", type=int, default=5, help="Top k prediction")
 parser.add_argument("--save_step", type=int, default=1000, help="steps to check loss and perpl")
 
@@ -69,7 +72,7 @@ def get_data_from_file(path, batch_size, seq_size, tokenizer):
         files = os.listdir(path)
         for file in files:
             source = os.path.join(path, file)
-            if file.startswith("tokenized_") or file.startswith("enc"):
+            if file.startswith("tokenized_") or file.startswith("enc") and "valid" not in file:
                 with(open(source, "r", encoding="utf-8", errors="replace")) as f:
                     print('loading tokenized file: ', file)
                     text = f.read().split()
@@ -167,25 +170,32 @@ def predict(device, net, words, n_vocab, tokenizer, top_k=5):
         # choice = choices[0][0]
         choice = torch.argmax(output[0]).item()
         words.append(tokenizer.convert_ids_to_tokens(choice))
-        print(tokenizer.convert_ids_to_tokens(choice))
+        
     print(' '.join(words).encode('utf-8'))
 
 
-def evaluate(model, args, tokenizer, criterion):
-    # TODO write evaluation
+def evaluate(model, in_text, out_text, device, args, criterion):
     model.eval()
     total_loss = 0.
-    state_h = model.zero_state(args.batch_size)
+    state_h, state_c = model.zero_state(args.batch_size)
+    state_h = state_h.to(device)
+    state_c = state_c.to(device)
     # get data
-    data = []
-    y = ""
-    data_source = ""
+    batches = get_batches(in_text, out_text, args.batch_size, args.seq_size)
+    eval_loss = 0.
+    total_loss = 0.
+    nb_eval_steps = 0
     with torch.no_grad():
-        # iterate over batches
-        # data = input, y = target
-        logits, state_h = model(data, state_h)
-        total_loss += len(data) * criterion(logits.transpose(1, 2), y).item()
-    return total_loss / (len(data_source) - 1)
+        for x, y in batches:
+            x = torch.tensor(x, dtype=torch.int64).to(device)
+            y = torch.tensor(y, dtype=torch.int64).to(device)
+            output, (state_h, state_c) = model(x, (state_h, state_c))
+            loss = criterion(output.transpose(1, 2), y).item()
+            total_loss += loss
+            nb_eval_steps += 1
+    total_loss = total_loss / nb_eval_steps
+    perplexity2 = math.exp(total_loss)
+    return perplexity2
 
 
 def main():
@@ -305,13 +315,20 @@ def main():
                         args.embedding_size, args.lstm_size, args.dropout)
 
         # load weights from embedding trained model
-        # net.load_state_dict(torch.load(args.embedmodel_path, map_location=dev), strict=False)
-
+        net.load_state_dict(torch.load(args.model_path, map_location=device))
+        #net = torch.load(args.model_path, map_location=device)
         net = net.to(device)
         print("done")
 
     if args.do_eval:
-        pass
+        n_vocab, in_text, out_text = get_data_from_file(
+            args.eval_file, args.batch_size, args.seq_size, tokenizer)
+        criterion, optimizer = get_loss_and_train_op(net, 0.001)
+        perpl = evaluate(net, in_text, out_text, device, args, criterion)
+        print(perpl)
+        file = os.path.join(args.checkpoint_path, args.output_name+"_eval.txt")
+        with open(file, "w+") as f:
+            f.write(" model: {}\nperplexity: {}".format(os.path.basedir(args.model_path), perpl))
 
     if args.do_predict:
         predict(device, net, args.initial_words, tokenizer.get_vocab_len(), tokenizer, top_k=5)
