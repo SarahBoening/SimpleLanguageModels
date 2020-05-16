@@ -29,21 +29,21 @@ parser.add_argument("--embedmodel_path", type=str, default="../Embedding/output/
 parser.add_argument("--ptmodel_path", type=str, default="", help="path to pretrained model")
 parser.add_argument("--model_path", type=str, default="", help="path to trained model for eval or prediction")
 parser.add_argument("--gpu_ids", type=int, default=0, help="IDs of GPUs to be used if available")
-parser.add_argument("--epochs", type=int, default=100, help="No ofs epochs")
+parser.add_argument("--epochs", type=int, default=10, help="No ofs epochs")
 parser.add_argument("--seq_size", type=int, default=32, help="")
-parser.add_argument("--batch_size", type=int, default=32, help="Size of batches")
+parser.add_argument("--batch_size", type=int, default=64, help="Size of batches")
 parser.add_argument("--embedding_size", type=int, default=300, help="Embedding size for GRU network")
 parser.add_argument("--gru_size", type=int, default=300, help="GRU size")
 parser.add_argument("--dropout", type=float, default=0.25, help="GRU size")
 parser.add_argument("--gradients_norm", type=int, default=5, help="Gradient normalization")
 parser.add_argument("--initial_words", type=str, default="I, am",
                     help="string seperated by commas for list of initial words to predict further")
-parser.add_argument("--do_predict", type=bool, default=True, help="should network predict at the end")
+parser.add_argument("--do_predict", type=bool, default=False, help="should network predict at the end")
 parser.add_argument("--do_train", type=bool, default=True, help="should network train")
 parser.add_argument("--do_eval", type=bool, default=False, help="should network evaluate")
 parser.add_argument("--do_finetune", type=bool, default=False, help="should network finetune, do_train has to be true")
 parser.add_argument("--predict_top_k", type=int, default=5, help="Top k prediction")
-parser.add_argument("--save_step", type=int, default=1000, help="steps to check loss and perpl")
+parser.add_argument("--save_step", type=int, default=3000, help="steps to check loss and perpl")
 
 
 def get_data_from_file(path, tokenizer):
@@ -88,8 +88,10 @@ def get_zero_pad(line, i, max_len, batch_size):
     a = line[:i+1]
     b = line[1:i+2]
     max_y = int(np.ceil((len(a)+zeros) / batch_size))
-    x = np.zeros((batch_size, 256))
-    y = np.zeros((batch_size, 256))
+    if max_y > 2:
+        max_y = 2
+    x = np.zeros((batch_size, max_y))
+    y = np.zeros((batch_size, max_y))
     k = 0
     stop = False
     for i in range(x.shape[0]):
@@ -222,7 +224,7 @@ def main():
         total_loss = 0.
         start_time = datetime.datetime.now()
         plot_every = 50000
-        reset_every = 20000
+        reset_every = 200000
         all_losses = []
         j = 0
         for e in range(args.epochs):
@@ -231,7 +233,7 @@ def main():
             for line in in_text:
                 max_len = len(line)
                 for i in range(max_len-1):
-                    x, y = get_zero_pad(line, i, max_line, args.batch_size)
+                    x, y = get_zero_pad(line, i, max_len, args.batch_size)
                     iteration += 1
                     j += 1
                     net.train()
@@ -280,11 +282,11 @@ def main():
 
                     if iteration % plot_every == 0:
                         all_losses.append(total_loss / plot_every)
-                        total_loss = 0
-                        plt.figure()
-                        plt.plot(all_losses)
-                        plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png'.format(iteration)))
-                        plt.close()
+                        #total_loss = 0
+                        #plt.figure()
+                        #plt.plot(all_losses)
+                        #plt.savefig(os.path.join(args.checkpoint_path, 'loss_plot_{}.png'.format(iteration)))
+                        #plt.close()
         # save model after training
         torch.save(net, os.path.join(args.checkpoint_path, 'model-{}-{}.pth'.format(args.output_name, 'finished')))
         print('Finished training - perplexity: {}, loss: {}, best perplexity: {}'.format(perpl, total_loss, best_ppl))
